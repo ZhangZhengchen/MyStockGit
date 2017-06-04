@@ -394,6 +394,8 @@ def UpdateData():
         theName = theName.lower()
         print theName
         UpdateDataForATable(theName)
+        time.sleep(2)
+        #break
         
 def UpdateDataForATable(symbol):
     ''''
@@ -403,7 +405,8 @@ def UpdateDataForATable(symbol):
     '''
     # Get data
     gd = MyGetData.GetData()
-    res = gd.GetStockHistoryChartAPI(36, symbol)
+    #res = gd.GetStockHistoryChartAPI(36, symbol)
+    res = gd.GetDailyDataFromGoogle(60, symbol)
     # Get latest date
     cur = con.cursor()
     
@@ -426,12 +429,15 @@ def UpdateDataForATable(symbol):
         else:
             values.append((curdate,res[4][i],res[1][i],res[2][i],res[3][i],int(res[5][i])))
     
+    #print values
     #insert values'
     try:
         theSQL = 'insert into '+symbol+'daily values('
         a = cur.executemany(theSQL+'%s,%s,%s,%s,%s,%s)',values)
         con.commit()
     except:
+        print 'error in inserting values'
+        print theSQL
         cur.close()
         return
     cur.close() 

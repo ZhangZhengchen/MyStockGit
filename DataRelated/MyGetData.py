@@ -76,6 +76,80 @@ class GetData(object):
         del df['ts']'''
         return parsed_data
 
+    def GetDailyDataFromGoogle(self,window,symbol):
+        '''
+        we lost the market (NASD or NYSE) info in the database
+        So we try two times here...
+        '''
+        symbol = symbol.upper()
+        theres = self._SubGetDailyDataFromGoogle(window, symbol, 'NASD')
+        if len(theres[0])==0:
+            return self._SubGetDailyDataFromGoogle(window, symbol, 'NYSE')
+        else:
+            return theres
+    
+        
+    def _SubGetDailyDataFromGoogle(self,window,symbol,market):
+        '''
+        return [time close high low open volume]
+        '''
+        period = 86400
+        url_root = 'http://www.google.com/finance/getprices?i='
+        url_root += str(period)+ '&p=' + str(window)
+        url_root += 'd&f=d,c,h,l,o,v&df=cpct&q=' + symbol
+        url_root += '&x='+market
+        #print url_root
+        try:
+            response = urllib2.urlopen(url_root)
+            data = response.read().split('\n')
+        except:
+            print sys.exc_info()[0]
+            return [[],[],[],[],[],[]]
+        #print data
+        #actual data starts at index = 7
+        #first line contains full timestamp,
+        #every other line is offset of period from timestamp
+        anchor_stamp = ''
+        end = len(data)
+        if market=='SGX':
+            timezoneoffset = 0
+        else:
+            timezoneoffset = -12*60*60
+        
+        thedates = []
+        close=[]
+        open = []
+        high = []
+        low = []
+        volume = []
+        
+        for i in range(7, end):
+            cdata = data[i].split(',')
+            if len(cdata)<6:
+                #print cdata
+                continue
+            if 'a' in cdata[0]:
+                #first one record anchor timestamp
+                anchor_stamp = cdata[0].replace('a', '')
+                cts = int(anchor_stamp) + timezoneoffset
+            else:
+                try:
+                    coffset = int(cdata[0])
+                    cts = int(anchor_stamp) + (coffset * period) + timezoneoffset
+                    #print parsed_data[-1]
+                except:
+                    continue # for time zone offsets thrown into data
+            adate = dt.datetime.fromtimestamp(float(cts)).strftime('%Y-%m-%d')
+            thedates.insert(0,adate)
+            close.insert(0,cdata[1])
+            high.insert(0,cdata[2])
+            low.insert(0,cdata[3])
+            open.insert(0,cdata[4])
+            volume.insert(0,cdata[5])   
+            #print parsed_data[-1]
+            
+       
+        return [thedates,close,high,low,open,volume]
     
     def GetStockHistoryChartAPI(self,monthrange,stockid):
         '''
