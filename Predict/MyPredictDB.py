@@ -127,7 +127,8 @@ def GetUpTrendStocks(StartDate):
 
 def GetAllData(theDate,datanumber=25):
     '''
-    theDate: 2015-01-01
+    @param theDate: string format 2015-01-01
+    @return: A dictionary. The Symbols are keys. Values are arrays. [price date,open,close,high,low,volume] order by date desc
     '''
     AllDic = {}
     with con:
