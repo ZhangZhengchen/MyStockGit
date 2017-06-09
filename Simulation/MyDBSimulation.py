@@ -51,7 +51,7 @@ class SimulationBaseClass:
         elif len(self.CurrentList)==2 and self.RemainMoney>10:
             RemainMoney = self.RemainMoney-10
         elif len(self.CurrentList)==3:
-            print ("we already have 3 stocks in hand.")
+            #print ("we already have 3 stocks in hand.")
             return
         else:
             print ("there is not enough money. "+str(self.RemainMoney))
@@ -59,15 +59,16 @@ class SimulationBaseClass:
         
         if BuyPrice>0.0:
             NumberHold = math.floor(RemainMoney/BuyPrice)
-            RemainMoney -= NumberHold*BuyPrice
+            self.RemainMoney -= NumberHold*BuyPrice
             if Symbol in self.CurrentList:
                 current = self.CurrentList[Symbol]
                 current.append([NumberHold,BuyPrice,theDate])
+                self.CurrentList[Symbol] = current
             else:
                 self.CurrentList[Symbol] = [[NumberHold,BuyPrice,theDate]]
                 
-            self.RemainMoney = RemainMoney
             print('buy '+str(NumberHold)+' '+Symbol +' with price '+str(BuyPrice)+' at '+theDate)
+            print("we remain cash "+str(self.RemainMoney))
         
         '''AllData = {}
         adate = datetime.datetime.strptime(theDate,'%Y-%m-%d')
@@ -114,23 +115,31 @@ class SimulationBaseClass:
             for anitem in holdings:
                 SellMoney += anitem[0]*SellPrice
                 print('Sell '+str(anitem[0])+' '+Symbol +' with price '+str(SellPrice)+' at '+SellDate)
-            del self.CurrentList[Symbol]
             self.RemainMoney +=SellMoney-10
         else:
             print("We are not holding "+Symbol)
+        print("we remain cash "+str(self.RemainMoney))
     
     def RunAStrategy(self):
         theStartDate = datetime.datetime.strptime(self.StartDate,'%Y-%m-%d')
         theEndDate = datetime.datetime.strptime(self.EndDate,'%Y-%m-%d')
         currentDate = theStartDate
         while currentDate<=theEndDate:
-            BuyRes = self.GetBuyList(currentDate.strftime('%Y-%m-%d'))
-            for anitem in BuyRes:
-                self.BuyAStock(currentDate.strftime('%Y-%m-%d'), anitem[0], anitem[1])
-            for anitem in self.CurrentList:
-                [SellOrNot,SellPrice] = self.SellNow(anitem,currentDate.strftime('%Y-%m-%d'))
+            if len(self.CurrentList)<3:
+                BuyRes = self.GetBuyList(currentDate.strftime('%Y-%m-%d'))
+                for anitem in BuyRes:
+                    self.BuyAStock(currentDate.strftime('%Y-%m-%d'), anitem[0], anitem[1])
+                    if len(self.CurrentList)==3:
+                        break
+            removed = []
+            for i in range(len(self.CurrentList)):
+                asymbol = self.CurrentList.keys()[i]
+                [SellOrNot,SellPrice] = self.SellNow(asymbol,currentDate.strftime('%Y-%m-%d'))
                 if SellOrNot:
-                    self.SellAStock(anitem, SellPrice, currentDate.strftime('%Y-%m-%d'))
+                    self.SellAStock(asymbol, SellPrice, currentDate.strftime('%Y-%m-%d'))
+                    removed.append(asymbol)
+            for anitem in removed:
+                del self.CurrentList[anitem]
             currentDate+=timedelta(days=1)
             
         thecurrentdata = MyPredictDB.GetAllData(self.EndDate, 1)
@@ -141,11 +150,12 @@ class SimulationBaseClass:
             for adata in thedata:
                 totalnum += adata[0]
             print('We are holding '+str(totalnum) +' '+anitem)
-            print('The current price is '+thecurrentdata[anitem][2])
-            themoney = totalnum*thecurrentdata[anitem][2]
+            print('The current price is '+str(thecurrentdata[anitem][2][0]))
+            themoney = totalnum*thecurrentdata[anitem][2][0]
             totalmoney += themoney
-        print('we have remain money:'+str(self.RemainMoney))
+        print('we have remain cash:'+str(self.RemainMoney))
         print('we have total money:'+str(self.RemainMoney+totalmoney))
+        print('Percent is '+str((self.RemainMoney+totalmoney)/self.InitMoney))
     
     @abstractmethod
     def GetBuyList(self,aDate):
@@ -165,11 +175,13 @@ class SimulationBaseClass:
         return[False,0.0]
 
 class BuyAllTimeHigh(SimulationBaseClass):
-    def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200):
+    def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,DownPercent = 0.5):
         '''
         @param AllTimeHighPeriod: one year all time high or one month all time high? the unit is days
+        @param DownPercent: must >0 and <1 
         '''
         SimulationBaseClass.__init__(self, InitMoney, StartDate, EndDate)
+        self.DownPercent = DownPercent
         # Get all data
         theStartDate = datetime.datetime.strptime(self.StartDate,'%Y-%m-%d').date()
         theEndDate = datetime.datetime.strptime(self.EndDate,'%Y-%m-%d').date()
@@ -178,6 +190,7 @@ class BuyAllTimeHigh(SimulationBaseClass):
         self.AllData = MyPredictDB.GetAllData(EndDate,AllTimeHighPeriod+totalPeriod)
         print("Calculating all time highs")
         self.AllTimeHigh = {}
+        RemoveData = []
         for anitem in self.AllData:
             # get all time high
             alltimehigh = {}
@@ -195,17 +208,30 @@ class BuyAllTimeHigh(SimulationBaseClass):
                     startIndex = i
                     break
             if startIndex==-1:
-                print("the start date is not in the database")
+                #print("the start date is not in the database")
+                RemoveData.append(anitem)
+                continue
             
-            for i in range(startIndex+1):
-                if allClosePrices[i]>max(allClosePrices[i+1:min(i+1+AllTimeHighPeriod,len(allClosePrices))]):
-                    alltimehigh[allDates[i].strftime('%Y-%m-%d')]=True
-                else:
-                    alltimehigh[allDates[i].strftime('%Y-%m-%d')]=False
-                    
-            od = collections.OrderedDict(sorted(alltimehigh.items(),reverse=True))
-            self.AllTimeHigh[anitem] = od
-        
+            try:
+                for i in range(startIndex+1):
+                    lastIndex = min(i+1+AllTimeHighPeriod,len(allClosePrices))
+                    #print lastIndex
+                    #print i
+                    #print allClosePrices
+                    if allClosePrices[i]>max(allClosePrices[i+1:lastIndex]):
+                        alltimehigh[allDates[i].strftime('%Y-%m-%d')]=True
+                    else:
+                        alltimehigh[allDates[i].strftime('%Y-%m-%d')]=False
+                od = collections.OrderedDict(sorted(alltimehigh.items(),reverse=True))
+                self.AllTimeHigh[anitem] = od
+            except:
+                if anitem in self.AllTimeHigh:
+                    del self.AllTimeHigh[anitem]
+                RemoveData.append(anitem)
+        for anitem in RemoveData:
+            del self.AllData[anitem]
+            
+            
     def GetBuyList(self,aDate):
         '''
         @param aDate: string format
@@ -222,23 +248,29 @@ class BuyAllTimeHigh(SimulationBaseClass):
         #sort the stocks
         TheCompany = []
         for asymbol in StockList:
-            TheData = self.AllData[asymbol][-1]
+            LastClosePrice = self.AllData[asymbol][2][-1]
+            LastVolume = self.AllData[asymbol][-1][-1]
             # we use a simple method to calculate the company size
             #close price * volume
-            TheNumber = TheData[2]*TheData[-1]
+            TheNumber = LastClosePrice*LastVolume
             TheCompany.append(TheNumber)
-        Index = sorted(range(len(TheCompany)), key=lambda k: TheCompany[k])
-        SortedList = []
+        Index = sorted(range(len(TheCompany)), key=lambda k: TheCompany[k],reverse=True)
+        SortedList = [None]*len(StockList)
         for i in range(len(StockList)):
-            SortedList.append(StockList[Index[i]])
+            SortedList[Index[i]] = StockList[i]
         OpenPrices = []
+        theDate = datetime.datetime.strptime(aDate,'%Y-%m-%d').date()
         for asymbol in SortedList:
             TheDatas = self.AllData[asymbol]
-            for adata in TheDatas:
-                if adata[0]==aDate:
-                    OpenPrices.append(adata[1])
+            i = 0
+            for adate in TheDatas[0]:
+                if adate==theDate:
+                    OpenPrices.append(TheDatas[1][i])
                     break
+                i+=1
         ReturnList =[]
+        #print SortedList
+        #print OpenPrices
         for i in range(len(SortedList)):
             ReturnList.append([SortedList[i],OpenPrices[i]])
         return ReturnList
@@ -253,19 +285,45 @@ class BuyAllTimeHigh(SimulationBaseClass):
             return [False,0.0]
         
         BuyInfo = self.CurrentList[Symbol]
+        # if it is the same day of buying, return false
+        LastBuyDay = BuyInfo[-1][2]
+        if aDate==LastBuyDay:
+            return [False,0.0]
+        
+        aDateDate = datetime.datetime.strptime(aDate,'%Y-%m-%d').date()
+        TheDatas = self.AllData[Symbol]
+        # weekend, public holiday etc.
+        if not aDateDate in TheDatas[0]:
+            return [False,0.0]
         maxBuyPrice = 0.0
         for anitem in BuyInfo:
             #anitem=[number hold,buy price,buy date]
             if anitem[1]>maxBuyPrice:
                 maxBuyPrice = anitem[1]
-        TheDatas = self.AllData[Symbol]
-        for adata in TheDatas:
-            if adata[0]==aDate:
-                if float(adata[1])>=maxBuyPrice*1.03:
-                    return [True,float(adata[1])]
-                else:
-                    return [False,0.0]
+        # If the price is lower than 5% of the buy price or the highest price, sell it.
+        maxPriceSinceBuy = maxBuyPrice
+        LastBuyDayDate= datetime.datetime.strptime(LastBuyDay,'%Y-%m-%d').date()
+        i = -1
+        while TheDatas[0][i]<=LastBuyDayDate:
+            i-=1
         
+        while TheDatas[0][i]<aDateDate:
+            if TheDatas[2][i]>maxPriceSinceBuy:
+                maxPriceSinceBuy=TheDatas[2][i]
+            i-=1
+        if TheDatas[0][i]!=aDateDate:
+            print "These two dates should be same"
+            print TheDatas[0][i]
+            print aDateDate
+            return [False,0.0]
+        
+        # last close
+        #print self.DownPercent
+        #print maxPriceSinceBuy
+        if TheDatas[2][i+1]<maxPriceSinceBuy*(1-self.DownPercent):
+            return [True,TheDatas[1][i]]
+        else:
+            return [False,0.0]
 '''def RunAStrategy(initMoney,startDate,endDate):
     #startDate: 2016-01-01, string
     #Get data of that date
@@ -304,5 +362,5 @@ class BuyAllTimeHigh(SimulationBaseClass):
     '''
     
 if __name__=='__main__':
-    astrategy = BuyAllTimeHigh(3500,'2016-04-04','2016-06-01',20)
+    astrategy = BuyAllTimeHigh(6000,'2016-01-04','2017-01-04',60,0.06)
     astrategy.RunAStrategy()
