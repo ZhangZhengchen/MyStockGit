@@ -12,6 +12,7 @@ import MyGetData
 import datetime
 import copy
 import sklearn.preprocessing as prep
+from data import PrepareData
 
 con = mdb.connect('localhost', 'root', '', 'nasdaq')  
 def CreateDailyTable():
@@ -394,9 +395,71 @@ def UpdateData():
         theName = theName.lower()
         print theName
         UpdateDataForATable(theName)
+        #UpdateDataForATable_FullUpdate(theName)
         time.sleep(2)
         #break
-        
+
+def UpdateSomeData(StockList):
+    '''
+    Get all company symbols
+    Update one by one
+    @param StockList: a list of stock symbols 
+    '''
+    for i in range(len(StockList)):
+        theName = StockList[i]
+        theName = theName.lower()
+        print theName
+        UpdateDataForATable(theName)
+        #UpdateDataForATable_FullUpdate(theName)
+        time.sleep(2)
+
+def UpdateDataForATable_FullUpdate(symbol):
+    ''''
+    Step 1: Get data
+    Step 2: Get all date in the database, if not in the database, insert into
+    Step 3: Insert into the database
+    '''
+    # Get data
+    gd = MyGetData.GetData()
+    #res = gd.GetStockHistoryChartAPI(36, symbol)
+    res = gd.GetDailyDataFromGoogle(72, symbol)
+    # Get latest date
+    cur = con.cursor()
+    
+    AllExistDates = []
+    try:
+        cur.execute("select pricedate from "+symbol+"daily order by pricedate desc limit 72")
+        row = cur.fetchall()
+        if len(row)==0:
+            thedate = datetime.datetime.strptime('2000-02-02','%Y-%m-%d').date()
+        else:
+            for i in range(len(row)):
+                AllExistDates.append(row[i][0])
+    except:
+        print 'Error at get latest date in UpdateDataForATable'
+        return
+    # compare date
+    values = []
+    for i in range(len(res[0])):
+        curdate = res[0][i]
+        if datetime.datetime.strptime(curdate,'%Y-%m-%d').date() in AllExistDates:
+            continue
+        else:
+            values.append((curdate,res[4][i],res[1][i],res[2][i],res[3][i],int(res[5][i])))
+    
+    #print values
+    #insert values'
+    try:
+        theSQL = 'insert into '+symbol+'daily values('
+        a = cur.executemany(theSQL+'%s,%s,%s,%s,%s,%s)',values)
+        con.commit()
+    except:
+        print 'error in inserting values'
+        print theSQL
+        cur.close()
+        return
+    cur.close()
+            
 def UpdateDataForATable(symbol):
     ''''
     Step 1: Get data
@@ -465,9 +528,13 @@ if __name__=='__main__':
     Step 4: Update data
     '''
     Step=''
-    Step = 'UpdateData'
+    #Step = 'UpdateData'
     if Step=='UpdateData':
         UpdateData()
+    Step = 'UpdateBigCompanyList'
+    if Step=='UpdateBigCompanyList':
+        BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
+        UpdateSomeData(BigLists)
     ##DeleteDataInAllTable()
     '''
     Step 3: Generate features for training and testing

@@ -125,6 +125,24 @@ def GetUpTrendStocks(StartDate):
     for anitem in sorted_x:
         print anitem
 
+def GetAllDataFromAList(StockList,theDate,datanumber=25):
+    AllDic = {}
+    with con:
+        for i in range(len(StockList)):
+            theName = StockList[i]
+            if theName.find('^')>0:
+                continue 
+            #print theName
+            data = []
+            thesql = 'select * from '+theName+'daily where pricedate<=\''+theDate+'\' order by pricedate desc limit '+str(datanumber)
+            data = GetDataFromATable(thesql)
+            if len(data[0])==0:
+                continue
+            if data[0][0]!=datetime.datetime.strptime(theDate,'%Y-%m-%d').date():
+                continue
+            AllDic[theName] = data
+    return AllDic
+
 def GetAllData(theDate,datanumber=25):
     '''
     @param theDate: string format 2015-01-01

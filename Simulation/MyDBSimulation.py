@@ -362,5 +362,11 @@ class BuyAllTimeHigh(SimulationBaseClass):
     '''
     
 if __name__=='__main__':
-    astrategy = BuyAllTimeHigh(6000,'2016-01-04','2017-01-04',60,0.06)
-    astrategy.RunAStrategy()
+    '''for i in [20,30,40,50,60,70,80,90,100,120,140]:
+        astrategy = BuyAllTimeHigh(6000,'2016-01-04','2017-01-04',i,0.03)
+        astrategy.RunAStrategy()
+        print 'i==='+str(i)
+        print '=====================================\n\n\n'
+    '''
+    astrategy = BuyAllTimeHigh(6000,'2016-01-04','2017-01-04',20,0.03)
+    
