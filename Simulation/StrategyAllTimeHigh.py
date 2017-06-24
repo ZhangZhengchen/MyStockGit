@@ -70,6 +70,11 @@ class BuyAllTimeHighWitList(BuyAllTimeHigh):
             
         
     def RunAStrategy(self):
+        '''
+        The difference to the base class is in the last step.
+        When calculate the last date's price, the basic class needs to read the database again.
+        Here we just get the data from self.AllData
+        '''
         theStartDate = datetime.datetime.strptime(self.StartDate,'%Y-%m-%d')
         theEndDate = datetime.datetime.strptime(self.EndDate,'%Y-%m-%d')
         currentDate = theStartDate
@@ -108,7 +113,7 @@ class BuyAllTimeHighWitList(BuyAllTimeHigh):
     
     def ShouldBeSellNow(self,Symbol,aDate,LastBuyDay,BuyPrice): 
         '''
-        If the price is higher than 3% of the buying price, sell it
+        If the price is lower than 3% of the buying price, sell it
         @param aDate: string format 2017-01-01 
         @param LastBuyDay: string format 2017-01-01 
         @param BuyPrice: float number 
@@ -131,10 +136,18 @@ class BuyAllTimeHighWitList(BuyAllTimeHigh):
         while TheDatas[0][i]<=LastBuyDayDate:
             i-=1
         
+        # the highest close price
         while TheDatas[0][i]<aDateDate:
             if TheDatas[2][i]>maxPriceSinceBuy:
                 maxPriceSinceBuy=TheDatas[2][i]
             i-=1
+        
+        '''# the highest price
+        while TheDatas[0][i]<aDateDate:
+            if TheDatas[3][i]>maxPriceSinceBuy:
+                maxPriceSinceBuy=TheDatas[3][i]
+            i-=1'''
+            
         if TheDatas[0][i]!=aDateDate:
             print "These two dates should be same"
             print TheDatas[0][i]
@@ -149,16 +162,19 @@ class BuyAllTimeHighWitList(BuyAllTimeHigh):
         else:
             return [False,0.0]
 if __name__=='__main__':
-    '''for i in [20,30,40,50,60,70,80,90,100,120,140]:
-        astrategy = BuyAllTimeHigh(6000,'2016-01-04','2017-01-04',i,0.03)
+    BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
+    '''for i in [100,120,140,160,180]:
+        astrategy = BuyAllTimeHighWitList(6000,'2017-01-04','2017-06-22',i,0.05,BigLists)
         astrategy.RunAStrategy()
         print 'i==='+str(i)
         print '=====================================\n\n\n'
     '''
+    
     BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
-    astrategy = BuyAllTimeHighWitList(6000,'2016-01-04','2017-06-16',200,0.03,BigLists)
+    EndDate = '2017-06-22'
+    astrategy = BuyAllTimeHighWitList(6000,'2017-01-04',EndDate,140,0.03,BigLists)
     #astrategy.RunAStrategy()
-    res = astrategy.GetBuyList('2017-06-16')
+    res = astrategy.GetBuyList(EndDate)
     
     #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
     print res

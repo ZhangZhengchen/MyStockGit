@@ -57,6 +57,10 @@ class SimulationBaseClass:
             print ("there is not enough money. "+str(self.RemainMoney))
             return 
         
+        if RemainMoney<BuyPrice:
+            print ("there is not enough money. "+str(self.RemainMoney)+". The stock price is "+str(BuyPrice))
+            return
+        
         if BuyPrice>0.0:
             NumberHold = math.floor(RemainMoney/BuyPrice)
             self.RemainMoney -= NumberHold*BuyPrice
