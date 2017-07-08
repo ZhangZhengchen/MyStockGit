@@ -9,6 +9,7 @@ from Predict import MyPredictDB
 import collections
 from data import PrepareData
 from datetime import timedelta
+import math
 
 class BuyAllTimeHighWitList(BuyAllTimeHigh):
     def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,DownPercent = 0.5,StockList = []):
@@ -83,7 +84,7 @@ class BuyAllTimeHighWitList(BuyAllTimeHigh):
                 BuyRes = self.GetBuyList(currentDate.strftime('%Y-%m-%d'))
                 for anitem in BuyRes:
                     self.BuyAStock(currentDate.strftime('%Y-%m-%d'), anitem[0], anitem[1])
-                    if len(self.CurrentList)==3:
+                    if len(self.CurrentList)==1:
                         break
             removed = []
             for i in range(len(self.CurrentList)):
@@ -157,25 +158,245 @@ class BuyAllTimeHighWitList(BuyAllTimeHigh):
         # last close
         #print self.DownPercent
         #print maxPriceSinceBuy
-        if TheDatas[2][i+1]<maxPriceSinceBuy*(1-self.DownPercent):
+        #if TheDatas[2][i+1]<maxPriceSinceBuy*(1-self.DownPercent):
+        if TheDatas[4][i+1]<maxPriceSinceBuy*(1-self.DownPercent):
             return [True,TheDatas[1][i]]
         else:
             return [False,0.0]
+        
+class AllTimeHighAllInOne(BuyAllTimeHighWitList):
+    def BuyAStock(self, theDate, Symbol, BuyPrice):
+        '''
+        Buy a stock on some day
+        Calculate the money left
+        Update status
+        @param theDate:string format 2017-01-01 
+        '''
+        NumberHold = 0
+        if len(self.CurrentList)==0 and self.RemainMoney>10:
+            RemainMoney = self.RemainMoney-10
+        else:
+            #print ("there is not enough money. "+str(self.RemainMoney))
+            return 
+        
+        if RemainMoney<BuyPrice:
+            print ("there is not enough money. "+str(self.RemainMoney)+". The stock price is "+str(BuyPrice))
+            return
+        
+        if BuyPrice>0.0:
+            NumberHold = math.floor(RemainMoney/BuyPrice)
+            self.RemainMoney -= NumberHold*BuyPrice
+            if Symbol in self.CurrentList:
+                current = self.CurrentList[Symbol]
+                current.append([NumberHold,BuyPrice,theDate])
+                self.CurrentList[Symbol] = current
+            else:
+                self.CurrentList[Symbol] = [[NumberHold,BuyPrice,theDate]]
+                
+            print('buy '+str(NumberHold)+' '+Symbol +' with price '+str(BuyPrice)+' at '+theDate)
+            print("we remain cash "+str(self.RemainMoney))
+        
+class ATHAllInOneBuyAnotherDay(AllTimeHighAllInOne):
+    def GetBuyList(self,aDate):
+        '''
+        @param aDate: string format
+        @return:   a list of stocks. Each item in the list [Symbol,BuyPrice]
+        the day it achieves all time high, we wait for a day, and buy
+        Get the stocks achieved all time high yesterday.
+        Then buy at the open price today.
+        The stock is ordered by the volume*close price yesterday.
+        '''
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        
+        APreDate = ThePreviousDay
+        for anitem in self.AllTimeHigh:
+            ThisSymbolData = self.AllTimeHigh[anitem]
+            if not aDate in ThisSymbolData:
+                return []
+            else:
+                dayinterval = 0
+                while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    APreDate -= datetime.timedelta(days=1)
+                    dayinterval+=1
+                if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    return []
+                else:
+                    break
+        SortedList = self.GetBuyListNormal(ThePreviousDay.strftime('%Y-%m-%d'))
+        OpenPrices = []
+        theDate = datetime.datetime.strptime(aDate,'%Y-%m-%d').date()
+        #print theDate
+        for asymbol in SortedList:
+            TheDatas = self.AllData[asymbol]
+            #print TheDatas[0]
+            i = 0
+            for adate in TheDatas[0]:
+                #print adate
+                if adate==theDate:
+                    OpenPrices.append(TheDatas[1][i])
+                    break
+                i+=1
+        ReturnList =[]
+        #print SortedList
+        #print OpenPrices
+        for i in range(len(SortedList)):
+            ReturnList.append([SortedList[i],OpenPrices[i]])
+        return ReturnList
+    
+    
+    def GetBuyListNormal(self,aDate):
+        '''
+        @param aDate: string format
+        @return:   a list of stocks. Each item in the list [Symbol,BuyPrice]
+        Get the stocks achieved all time high yesterday.
+        Then buy at the open price today.
+        The stock is ordered by the volume*close price yesterday.
+        '''
+        StockList = []
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        APreDate = ThePreviousDay
+        for anitem in self.AllTimeHigh:
+            ThisSymbolData = self.AllTimeHigh[anitem]
+            if not aDate in ThisSymbolData:
+                continue
+            dayinterval = 0
+            while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                APreDate -= datetime.timedelta(days=1)
+                dayinterval+=1
+            if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                continue
+                
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
+                StockList.append(anitem)
+        #sort the stocks
+        TheCompany = []
+        for asymbol in StockList:
+            LastClosePrice = self.AllData[asymbol][2][-1]
+            LastVolume = self.AllData[asymbol][-1][-1]
+            # we use a simple method to calculate the company size
+            #close price * volume
+            TheNumber = LastClosePrice*LastVolume
+            TheCompany.append(TheNumber)
+        Index = sorted(range(len(TheCompany)), key=lambda k: TheCompany[k],reverse=True)
+        SortedList = [None]*len(StockList)
+        for i in range(len(StockList)):
+            SortedList[Index[i]] = StockList[i]
+        return SortedList        
+
+class ThreeBuyAnotherDay(BuyAllTimeHighWitList):
+    def GetBuyList(self,aDate):
+        '''
+        @param aDate: string format
+        @return:   a list of stocks. Each item in the list [Symbol,BuyPrice]
+        the day it achieves all time high, we wait for a day, and buy
+        Get the stocks achieved all time high yesterday.
+        Then buy at the open price today.
+        The stock is ordered by the volume*close price yesterday.
+        '''
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        
+        APreDate = ThePreviousDay
+        for anitem in self.AllTimeHigh:
+            ThisSymbolData = self.AllTimeHigh[anitem]
+            if not aDate in ThisSymbolData:
+                return []
+            else:
+                dayinterval = 0
+                while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    APreDate -= datetime.timedelta(days=1)
+                    dayinterval+=1
+                if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    return []
+                else:
+                    break
+        SortedList = self.GetBuyListNormal(ThePreviousDay.strftime('%Y-%m-%d'))
+        OpenPrices = []
+        theDate = datetime.datetime.strptime(aDate,'%Y-%m-%d').date()
+        #print theDate
+        for asymbol in SortedList:
+            TheDatas = self.AllData[asymbol]
+            #print TheDatas[0]
+            i = 0
+            for adate in TheDatas[0]:
+                #print adate
+                if adate==theDate:
+                    OpenPrices.append(TheDatas[1][i])
+                    break
+                i+=1
+        ReturnList =[]
+        #print SortedList
+        #print OpenPrices
+        for i in range(len(SortedList)):
+            ReturnList.append([SortedList[i],OpenPrices[i]])
+        return ReturnList
+    
+    
+    def GetBuyListNormal(self,aDate):
+        '''
+        @param aDate: string format
+        @return:   a list of stocks. Each item in the list [Symbol,BuyPrice]
+        Get the stocks achieved all time high yesterday.
+        Then buy at the open price today.
+        The stock is ordered by the volume*close price yesterday.
+        '''
+        StockList = []
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        APreDate = ThePreviousDay
+        for anitem in self.AllTimeHigh:
+            ThisSymbolData = self.AllTimeHigh[anitem]
+            if not aDate in ThisSymbolData:
+                continue
+            dayinterval = 0
+            while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                APreDate -= datetime.timedelta(days=1)
+                dayinterval+=1
+            if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                continue
+                
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
+                StockList.append(anitem)
+        #sort the stocks
+        TheCompany = []
+        for asymbol in StockList:
+            LastClosePrice = self.AllData[asymbol][2][-1]
+            LastVolume = self.AllData[asymbol][-1][-1]
+            # we use a simple method to calculate the company size
+            #close price * volume
+            TheNumber = LastClosePrice*LastVolume
+            TheCompany.append(TheNumber)
+        Index = sorted(range(len(TheCompany)), key=lambda k: TheCompany[k],reverse=True)
+        SortedList = [None]*len(StockList)
+        for i in range(len(StockList)):
+            SortedList[Index[i]] = StockList[i]
+        return SortedList        
+        
 if __name__=='__main__':
     BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
-    '''for i in [100,120,140,160,180]:
-        astrategy = BuyAllTimeHighWitList(6000,'2017-01-04','2017-06-22',i,0.05,BigLists)
+    '''Ratio = 0.05
+    StartDate = '2017-01-04'
+    EndDate = '2017-06-22'
+    for i in [5,10,20,30,40,50,60,70,80,90,100,120,140,160,180,200,220]:
+        #astrategy = BuyAllTimeHighWitList(6000,StartDate,EndDate,i,Ratio,BigLists)
+        #astrategy = ThreeBuyAnotherDay(6000,StartDate,EndDate,i,Ratio,BigLists)
+        astrategy = AllTimeHighAllInOne(6000,StartDate,EndDate,i,Ratio,BigLists)
+        #astrategy = ATHAllInOneBuyAnotherDay(6000,StartDate,EndDate,i,Ratio,BigLists)
+        
         astrategy.RunAStrategy()
         print 'i==='+str(i)
         print '=====================================\n\n\n'
+        
     '''
     
+    
     BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
-    EndDate = '2017-06-22'
-    astrategy = BuyAllTimeHighWitList(6000,'2017-01-04',EndDate,140,0.03,BigLists)
-    #astrategy.RunAStrategy()
-    res = astrategy.GetBuyList(EndDate)
-    
-    #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
-    print res
-    
+    EndDate = '2017-07-05'
+    for i in [30,35,40,60,90,120,150]:
+        astrategy = AllTimeHighAllInOne(6000,'2017-01-04',EndDate,i,0.03,BigLists)
+        #astrategy.RunAStrategy()
+        res = astrategy.GetBuyList(EndDate)
+        #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
+        print res

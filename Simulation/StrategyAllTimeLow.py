@@ -320,9 +320,19 @@ class SellAllTimeLowWitList(SimulationBaseClass):
             print self.CurrentList
         
 if __name__=='__main__':
-    BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
+    '''BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
     for i in [10,20,40,60,80,100,120,140,160,180,200]:
         astrategy = SellAllTimeLowWitList(6000,'2015-11-04','2016-02-04',i,0.05,BigLists)
         astrategy.RunAStrategy()
         print 'i==='+str(i)
         print '=====================================\n\n\n'
+        '''
+        
+    BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
+    EndDate = '2017-06-27'
+    astrategy = SellAllTimeLowWitList(6000,'2017-01-04',EndDate,140,0.03,BigLists)
+    #astrategy.RunAStrategy()
+    res = astrategy.GetBuyList(EndDate)
+    
+    #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
+    print res

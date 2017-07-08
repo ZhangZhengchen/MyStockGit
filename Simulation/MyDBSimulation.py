@@ -11,6 +11,7 @@ import numpy as np
 from datetime import timedelta
 from abc import abstractmethod
 import collections
+from bokeh.properties import This
 #Get a date, 
 #Get all data, 
 #Get Predict, 
@@ -245,9 +246,21 @@ class BuyAllTimeHigh(SimulationBaseClass):
         The stock is ordered by the volume*close price yesterday.
         '''
         StockList = []
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        APreDate = ThePreviousDay
         for anitem in self.AllTimeHigh:
             ThisSymbolData = self.AllTimeHigh[anitem]
-            if aDate in ThisSymbolData and ThisSymbolData[aDate]==True:
+            if not aDate in ThisSymbolData:
+                continue
+            dayinterval = 0
+            while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                APreDate -= datetime.timedelta(days=1)
+                dayinterval+=1
+            if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                continue
+                
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
                 StockList.append(anitem)
         #sort the stocks
         TheCompany = []
@@ -264,10 +277,13 @@ class BuyAllTimeHigh(SimulationBaseClass):
             SortedList[Index[i]] = StockList[i]
         OpenPrices = []
         theDate = datetime.datetime.strptime(aDate,'%Y-%m-%d').date()
+        #print theDate
         for asymbol in SortedList:
             TheDatas = self.AllData[asymbol]
+            #print TheDatas[0]
             i = 0
             for adate in TheDatas[0]:
+                #print adate
                 if adate==theDate:
                     OpenPrices.append(TheDatas[1][i])
                     break
