@@ -111,6 +111,11 @@ class BuyAllTimeHighWitList(BuyAllTimeHigh):
         print('we have remain cash:'+str(self.RemainMoney))
         print('we have total money:'+str(self.RemainMoney+totalmoney))
         print('Percent is '+str((self.RemainMoney+totalmoney)/self.InitMoney))
+        print('Detail:')
+        print('Win times')
+        print(self.Win)
+        print('Lose times')
+        print(self.Lose)
     
     def ShouldBeSellNow(self,Symbol,aDate,LastBuyDay,BuyPrice): 
         '''
@@ -375,10 +380,10 @@ class ThreeBuyAnotherDay(BuyAllTimeHighWitList):
         return SortedList        
         
 if __name__=='__main__':
-    BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
-    '''Ratio = 0.05
-    StartDate = '2017-01-04'
-    EndDate = '2017-06-22'
+    BigLists=PrepareData.GetBigCompany("../data/XLK.txt")
+    Ratio = 0.01
+    StartDate = '2016-01-04'
+    EndDate = '2017-01-04'
     for i in [5,10,20,30,40,50,60,70,80,90,100,120,140,160,180,200,220]:
         #astrategy = BuyAllTimeHighWitList(6000,StartDate,EndDate,i,Ratio,BigLists)
         #astrategy = ThreeBuyAnotherDay(6000,StartDate,EndDate,i,Ratio,BigLists)
@@ -389,10 +394,10 @@ if __name__=='__main__':
         print 'i==='+str(i)
         print '=====================================\n\n\n'
         
-    '''
     
     
-    BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
+    
+    '''BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
     EndDate = '2017-07-05'
     for i in [30,35,40,60,90,120,150]:
         astrategy = AllTimeHighAllInOne(6000,'2017-01-04',EndDate,i,0.03,BigLists)
@@ -400,3 +405,4 @@ if __name__=='__main__':
         res = astrategy.GetBuyList(EndDate)
         #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
         print res
+        '''

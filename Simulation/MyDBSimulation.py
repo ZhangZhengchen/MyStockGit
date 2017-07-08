@@ -20,7 +20,7 @@ from bokeh.properties import This
 
 class SimulationBaseClass:
     
-    def __init__(self,InitMoney,StartDate,EndDate):
+    def __init__(self,InitMoney,StartDate,EndDate,StockNumber):
         '''
         self.CurrentList is a dictionary. 
         The key is the stock symbol
@@ -33,11 +33,15 @@ class SimulationBaseClass:
         self.InitMoney = InitMoney
         self.StartDate = StartDate
         self.EndDate = EndDate
-        
+        self.Win = {'Time':0,'Max':0.0,'Min':0.0,'Average':0.0,'Money':[]}
+        self.Lose = {'Time':0,'Max':0.0,'Min':0.0,'Average':0.0,'Money':[]}
+        self.StockNumber = StockNumber
+        if StockNumber<=0:
+            self.StockNumber = 1
 
         # get all data
         
-    def BuyAStock(self,theDate,Symbol,BuyPrice):
+    def BuyAStock(self,theDate,Symbol,BuyPrice,):
         '''
         Buy a stock on some day
         Calculate the money left
@@ -45,21 +49,12 @@ class SimulationBaseClass:
         @param theDate:string format 2017-01-01 
         '''
         NumberHold = 0
-        if len(self.CurrentList)==0:
-            RemainMoney = self.RemainMoney/3-10
-        elif len(self.CurrentList)==1 and self.RemainMoney>20:
-            RemainMoney = self.RemainMoney/2-10
-        elif len(self.CurrentList)==2 and self.RemainMoney>10:
-            RemainMoney = self.RemainMoney-10
-        elif len(self.CurrentList)==3:
-            #print ("we already have 3 stocks in hand.")
+        if len(self.CurrentList)>=self.StockNumber:
             return
-        else:
-            print ("there is not enough money. "+str(self.RemainMoney))
-            return 
+        RemainMoney = float(self.RemainMoney)/(self.StockNumber-len(self.CurrentList))-10
         
         if RemainMoney<BuyPrice:
-            print ("there is not enough money. "+str(self.RemainMoney)+". The stock price is "+str(BuyPrice))
+            #print ("there is not enough money. "+str(self.RemainMoney)+". The stock price is "+str(BuyPrice))
             return
         
         if BuyPrice>0.0:
@@ -117,10 +112,28 @@ class SimulationBaseClass:
         if Symbol in self.CurrentList:
             holdings = self.CurrentList[Symbol]
             SellMoney = 0
+            BuyMoney = 0.0
             for anitem in holdings:
                 SellMoney += anitem[0]*SellPrice
                 print('Sell '+str(anitem[0])+' '+Symbol +' with price '+str(SellPrice)+' at '+SellDate)
+                # calculate total buy number and money
+                BuyMoney += anitem[0]*anitem[1]
             self.RemainMoney +=SellMoney-10
+            # win or lose
+            if BuyMoney>=SellMoney:
+                self.Lose['Time']+=1
+                self.Lose['Money'].append(BuyMoney-SellMoney)
+                self.Lose['Min'] = np.min(self.Lose['Money'])
+                self.Lose['Max'] = np.max(self.Lose['Money'])
+                self.Lose['Average'] = np.mean(self.Lose['Money'])
+            else:
+                self.Win['Time']+=1
+                self.Win['Money'].append(SellMoney-BuyMoney)
+                self.Win['Min'] = np.min(self.Win['Money'])
+                self.Win['Max'] = np.max(self.Win['Money'])
+                self.Win['Average'] = np.mean(self.Win['Money'])
+                
+            
         else:
             print("We are not holding "+Symbol)
         print("we remain cash "+str(self.RemainMoney))
@@ -130,11 +143,11 @@ class SimulationBaseClass:
         theEndDate = datetime.datetime.strptime(self.EndDate,'%Y-%m-%d')
         currentDate = theStartDate
         while currentDate<=theEndDate:
-            if len(self.CurrentList)<3:
+            if len(self.CurrentList)<self.StockNumber:
                 BuyRes = self.GetBuyList(currentDate.strftime('%Y-%m-%d'))
                 for anitem in BuyRes:
                     self.BuyAStock(currentDate.strftime('%Y-%m-%d'), anitem[0], anitem[1])
-                    if len(self.CurrentList)==3:
+                    if len(self.CurrentList)==self.StockNumber:
                         break
             removed = []
             for i in range(len(self.CurrentList)):
