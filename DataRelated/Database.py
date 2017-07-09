@@ -528,10 +528,10 @@ if __name__=='__main__':
     Step 4: Update data
     '''
     Step=''
-    #Step = 'UpdateData'
+    Step = 'UpdateData'
     if Step=='UpdateData':
         UpdateData()
-    Step = 'UpdateBigCompanyList'
+    #Step = 'UpdateBigCompanyList'
     if Step=='UpdateBigCompanyList':
         BigLists=PrepareData.GetBigCompany("../data/BigCompany.txt")
         UpdateSomeData(BigLists)
