@@ -565,14 +565,37 @@ def GetBuyListToday(EndDate,BigLists):
         #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
         print res
         
-def ShallSellToday(EndDate,Symbol,BigLists):
-    for j in [30,60]:
+def ShallSellToday(EndDate,SymbolList,BigLists):
+    '''
+    EndDate is the last closing day.
+    Because normally when I check shall I sell them, today is not closed yet.
+    '''
+    for j in [30]:
+        startindex = -1
+        TheDate = datetime.datetime.strptime(EndDate,'%Y-%m-%d').date()
         astrategy = VolumeChangeExistLow(5000,'2017-01-04',EndDate,100,j,BigLists,3)
-        res = astrategy.SellNow(Symbol, EndDate)
-        print res
-
+        for asymbol in SymbolList:
+            TheData = astrategy.AllData[asymbol]
+            if startindex==-1:
+                if not TheDate in TheData[0]:
+                    return
+                
+                for i in range(len(TheData[0])):
+                    if TheData[0][i]==TheDate:
+                        startindex = i
+                        break
+            LowestValue = numpy.min(TheData[2][startindex+1:startindex+j+1])
+            if TheData[2][startindex]<LowestValue:
+                print 'SELL '+asymbol+'. Last close price is '+str(TheData[2][startindex])
+            else:
+                print 'Don\'t sell ' +asymbol+'. Last close price is '+str(TheData[2][startindex])
+            print astrategy.SellNow(asymbol, EndDate)
+            print 'The Lowest value is '+str(LowestValue)+'. It should be your stop loss price\n\n\n'
+            
                         
 if __name__=='__main__':
+    
+    Step=''
     XLB=PrepareData.GetBigCompany("../data/XLB.txt")
     XLE=PrepareData.GetBigCompany("../data/XLE.txt")
     XLF=PrepareData.GetBigCompany("../data/XLF.txt")
@@ -591,36 +614,40 @@ if __name__=='__main__':
             if not aname in BigLists:
                 BigLists.append(aname)
     
-    '''StartDate = '2016-01-04'
-    #StartDate = '2015-01-06'
-    #EndDate = '2016-01-25'
-    EndDate = '2017-06-29'
-    AllRes = {}
-    AllVar = {}
-    for i in [5,10,20,30,60,90,100,120,150,200]:
-        temp = []
-        for j in [5,10,20,30,60]:
-            astrategy = VolumeChangeExistLow(5000,StartDate,EndDate,i,j,BigLists,3)
-            #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
-            [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
-            print 'i==='+str(i)+'\tj===='+str(j)
-            AllRes[str(i)+','+str(j)] = [Percent,AverageProfit,Expection]
-            temp.append(Percent)
-            print '=====================================\n\n\n'
-        AllVar[i] = [numpy.mean(temp),numpy.std(temp)]
-    AllRes = collections.OrderedDict(sorted(AllRes.items()))
-    for anitem in AllRes:
-        print anitem+'\t'+str(AllRes[anitem])
+    #Step='Test'
+    if Step=='Test':
+        StartDate = '2016-01-04'
+        #StartDate = '2015-01-06'
+        #EndDate = '2016-01-25'
+        EndDate = '2017-06-29'
+        AllRes = {}
+        AllVar = {}
+        for i in [10,20,30,60,90,100,120,150,200]:
+            temp = []
+            for j in [10,20,30,60]:
+                astrategy = VolumeChangeExistLow(5000,StartDate,EndDate,i,j,BigLists,3)
+                #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
+                [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
+                print 'i==='+str(i)+'\tj===='+str(j)
+                AllRes[str(i)+','+str(j)] = [Percent,AverageProfit,Expection]
+                temp.append(Percent)
+                print '=====================================\n\n\n'
+            AllVar[i] = [numpy.mean(temp),numpy.std(temp)]
+        AllRes = collections.OrderedDict(sorted(AllRes.items()))
+        for anitem in AllRes:
+            print anitem+'\t'+str(AllRes[anitem])
+        
+        print AllVar
     
-    print AllVar'''
-    
-    EndDate = '2017-07-07'
-    GetBuyListToday(EndDate,BigLists)
-    
-    '''EndDate = '2017-07-07'
-    Symbols = ['DAL','ABBV','JPM','TWX']
-    for anitem in Symbols:
-        print anitem
-        ShallSellToday(EndDate, 'DAL', BigLists)
-        print '\n'
-    '''    
+    Step='Buy'
+    if Step=='Buy':
+        BigLists = PrepareData.GetBigCompany("../data/BigCompany.txt")
+        EndDate = '2017-07-07'
+        GetBuyListToday(EndDate,BigLists)
+        
+    #Step = 'SellOrNot'
+    if Step=='SellOrNot':
+        EndDate = '2017-07-07'
+        Symbols = ['DAL','ABBV','JPM','TWX','AVY','TSLA']
+        ShallSellToday(EndDate, Symbols, BigLists)
+        
