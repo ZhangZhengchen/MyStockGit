@@ -86,6 +86,8 @@ class VolumeChangeExistLow(SimulationBaseClass):
         for anitem in RemoveData:
             del self.AllData[anitem]
     
+    
+    
     def RunAStrategy(self):
         '''
         The difference to the base class is in the last step.
@@ -195,6 +197,7 @@ class VolumeChangeExistLow(SimulationBaseClass):
             i+=1
         ClosePrice = TheDatas[2][i]*TotalNumber
         if (BuyMoney-ClosePrice)>=self.InitMoney*0.025*len(TheBuyData):
+        #if (BuyMoney-ClosePrice)>=150.00:
             return [True,TheDatas[1][i]]
         # if all time low, sell        
         elif ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
@@ -230,7 +233,17 @@ class VolumeChangeExistLow(SimulationBaseClass):
                 continue
                 
             if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
-                StockList.append(anitem)
+                PrePreDate = APreDate-datetime.timedelta(days=1)
+                i=0
+                while i<4 and not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    PrePreDate -= datetime.timedelta(days=1)
+                    i+=1
+                if not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    StockList.append(anitem)
+                else:
+                    if ThisSymbolData[PrePreDate.strftime('%Y-%m-%d')]==False:
+                        StockList.append(anitem)
+                #StockList.append(anitem)
         #sort the stocks according to the volume increase
         TheCompany = []
         for asymbol in StockList:
@@ -284,6 +297,81 @@ class VolumeChangeExistLow(SimulationBaseClass):
         #print OpenPrices
         for i in range(len(SortedList)):
             ReturnList.append([SortedList[i],OpenPrices[i]])
+        return ReturnList
+    
+    def GetBuyListNow(self,aDate):
+        '''
+        @param aDate: string format
+        @return:   a list of stocks. Each item in the list [Symbol,BuyPrice]
+        Get the stocks achieved all time high yesterday.
+        Then buy at the open price today.
+        The stock is ordered by the volume*close price yesterday.
+        '''
+        StockList = []
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        APreDate = ThePreviousDay
+        for anitem in self.AllTimeHigh:
+            ThisSymbolData = self.AllTimeHigh[anitem]
+            dayinterval = 0
+            while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                APreDate -= datetime.timedelta(days=1)
+                dayinterval+=1
+            if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                continue
+                
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
+                PrePreDate = APreDate-datetime.timedelta(days=1)
+                i=0
+                while i<4 and not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    PrePreDate -= datetime.timedelta(days=1)
+                    i+=1
+                if not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    StockList.append(anitem)
+                else:
+                    if ThisSymbolData[PrePreDate.strftime('%Y-%m-%d')]==False:
+                        StockList.append(anitem)
+                #StockList.append(anitem)
+        #sort the stocks according to the volume increase
+        TheCompany = []
+        for asymbol in StockList:
+            TheSymbolData = self.AllData[asymbol]
+            i = 0
+            while TheSymbolData[0][i]!=APreDate.date():
+                i+=1
+            PreVolume = TheSymbolData[-1][i]
+            PrePreVolume = 0
+            for k in range(1,6):
+                if i+k<len(TheSymbolData[-1]):
+                    PrePreVolume+=TheSymbolData[-1][i+k]
+                else:
+                    break
+            if k>0:
+                PrePreVolume = PrePreVolume/k
+            else:
+                PrePreVolume = PreVolume
+            if PrePreVolume>0:
+                TheCompany.append(float(PreVolume)/float(PrePreVolume))
+            else:
+                TheCompany.append(1)
+        #print(TheCompany)
+        #print(StockList)   
+        
+        Index = numpy.argsort(TheCompany)
+        #print('argsort result')
+        #print(Index)
+        Index = list(reversed(Index))
+        #print('reverse index')
+        #print(Index)
+        SortedList = [None]*len(StockList)
+        for i in range(len(StockList)):
+            SortedList[i] = StockList[Index[i]]
+        ReturnList =[]
+        
+        #print SortedList
+        #print OpenPrices
+        for i in range(len(SortedList)):
+            ReturnList.append([SortedList[i],0.0])
         return ReturnList
 
 
@@ -556,43 +644,7 @@ class SellAllTimeLow(VolumeChangeExistLow):
         else:
             return [False,0.0]
 
-def GetBuyListToday(EndDate,BigLists):
-    for i in [100,120,150]:
-        j = 30
-        astrategy = VolumeChangeExistLow(5000,'2017-01-04',EndDate,i,j,BigLists,3)
-        #astrategy.RunAStrategy()
-        res = astrategy.GetBuyList(EndDate)
-        #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
-        print res
-        
-def ShallSellToday(EndDate,SymbolList,BigLists):
-    '''
-    EndDate is the last closing day.
-    Because normally when I check shall I sell them, today is not closed yet.
-    '''
-    for j in [30]:
-        startindex = -1
-        TheDate = datetime.datetime.strptime(EndDate,'%Y-%m-%d').date()
-        astrategy = VolumeChangeExistLow(5000,'2017-01-04',EndDate,100,j,BigLists,3)
-        for asymbol in SymbolList:
-            TheData = astrategy.AllData[asymbol]
-            if startindex==-1:
-                if not TheDate in TheData[0]:
-                    return
-                
-                for i in range(len(TheData[0])):
-                    if TheData[0][i]==TheDate:
-                        startindex = i
-                        break
-            LowestValue = numpy.min(TheData[2][startindex+1:startindex+j+1])
-            if TheData[2][startindex]<LowestValue:
-                print 'SELL '+asymbol+'. Last close price is '+str(TheData[2][startindex])
-            else:
-                print 'Don\'t sell ' +asymbol+'. Last close price is '+str(TheData[2][startindex])
-            print astrategy.SellNow(asymbol, EndDate)
-            print 'The Lowest value is '+str(LowestValue)+'. It should be your stop loss price\n\n\n'
-            
-                        
+                     
 if __name__=='__main__':
     
     Step=''
@@ -614,7 +666,7 @@ if __name__=='__main__':
             if not aname in BigLists:
                 BigLists.append(aname)
     
-    #Step='Test'
+    Step='Test'
     if Step=='Test':
         StartDate = '2016-01-04'
         #StartDate = '2015-01-06'
@@ -625,7 +677,7 @@ if __name__=='__main__':
         for i in [10,20,30,60,90,100,120,150,200]:
             temp = []
             for j in [10,20,30,60]:
-                astrategy = VolumeChangeExistLow(5000,StartDate,EndDate,i,j,BigLists,3)
+                astrategy = VolumeChangeExistLow(5000,StartDate,EndDate,i,j,BigLists,1)
                 #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
                 [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
                 print 'i==='+str(i)+'\tj===='+str(j)
@@ -639,15 +691,3 @@ if __name__=='__main__':
         
         print AllVar
     
-    Step='Buy'
-    if Step=='Buy':
-        BigLists = PrepareData.GetBigCompany("../data/BigCompany.txt")
-        EndDate = '2017-07-07'
-        GetBuyListToday(EndDate,BigLists)
-        
-    #Step = 'SellOrNot'
-    if Step=='SellOrNot':
-        EndDate = '2017-07-07'
-        Symbols = ['DAL','ABBV','JPM','TWX','AVY','TSLA']
-        ShallSellToday(EndDate, Symbols, BigLists)
-        

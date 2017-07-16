@@ -33,15 +33,15 @@ class SimulationBaseClass:
         self.InitMoney = InitMoney
         self.StartDate = StartDate
         self.EndDate = EndDate
-        self.Win = {'Time':0,'Max':0.0,'Min':0.0,'Average':0.0,'Money':[]}
-        self.Lose = {'Time':0,'Max':0.0,'Min':0.0,'Average':0.0,'Money':[]}
+        self.Win = {'Time':0,'Max':0.0,'Min':0.0,'Average':0.0,'Money':[],'HoldingDays':[]}
+        self.Lose = {'Time':0,'Max':0.0,'Min':0.0,'Average':0.0,'Money':[],'HoldingDays':[]}
         self.StockNumber = StockNumber
         if StockNumber<=0:
             self.StockNumber = 1
 
         # get all data
         
-    def BuyAStock(self,theDate,Symbol,BuyPrice,):
+    def BuyAStock(self,theDate,Symbol,BuyPrice):
         '''
         Buy a stock on some day
         Calculate the money left
@@ -119,6 +119,10 @@ class SimulationBaseClass:
                 # calculate total buy number and money
                 BuyMoney += anitem[0]*anitem[1]
             self.RemainMoney +=SellMoney-10
+            BuyDate = holdings[-1][2]
+            BuyDate = datetime.datetime.strptime(BuyDate,'%Y-%m-%d').date()
+            SellDate = datetime.datetime.strptime(SellDate,'%Y-%m-%d').date()
+            HoldingDays = (SellDate-BuyDate).days
             # win or lose
             if BuyMoney>=SellMoney:
                 self.Lose['Time']+=1
@@ -126,17 +130,20 @@ class SimulationBaseClass:
                 self.Lose['Min'] = np.min(self.Lose['Money'])
                 self.Lose['Max'] = np.max(self.Lose['Money'])
                 self.Lose['Average'] = np.mean(self.Lose['Money'])
+                self.Lose['HoldingDays'].append(HoldingDays)
+                print('Lose. '+'We hold it for '+str(HoldingDays)+' days. We lose '+str(BuyMoney-SellMoney))
             else:
                 self.Win['Time']+=1
                 self.Win['Money'].append(SellMoney-BuyMoney)
                 self.Win['Min'] = np.min(self.Win['Money'])
                 self.Win['Max'] = np.max(self.Win['Money'])
                 self.Win['Average'] = np.mean(self.Win['Money'])
-                
-            
+                self.Win['HoldingDays'].append(HoldingDays)
+                print('Win. '+'We hold it for '+str(HoldingDays)+' days. We win '+str(SellMoney - BuyMoney))
         else:
             print("We are not holding "+Symbol)
         print("we remain cash "+str(self.RemainMoney))
+        
     
     def RunAStrategy(self):
         theStartDate = datetime.datetime.strptime(self.StartDate,'%Y-%m-%d')
@@ -191,6 +198,9 @@ class SimulationBaseClass:
         If not, return [False,0.0]
         '''
         return[False,0.0]
+        
+    
+    
 
 class BuyAllTimeHigh(SimulationBaseClass):
     def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,DownPercent = 0.5):
