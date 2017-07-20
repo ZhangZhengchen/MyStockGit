@@ -17,15 +17,18 @@ class Holding():
         self.HoldingNumber = HoldingNumber
         self.OpenDate = OpenDate
         self.MarginRequired = MarginRequired
+        self.MaximumProfit = 0.0
+        self.MaximumLose = 0.0
 
 class BuyATHExitBigVibration(VolumeChangeExistLow):
-    def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,AllTimeLowPeriod = 10,StockList = [],StockNumber = 3, Leverage=5):
+    def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,VibrationPeriod = 10,StockList = [],StockNumber = 3, Leverage=5,VibrationRatio=3.5):
         '''
         @param AllTimeHighPeriod: one year all time high or one month all time high? the unit is days
         @param DownPercent: must >0 and <1 
         '''
         SimulationBaseClass.__init__(self, InitMoney, StartDate, EndDate,StockNumber)
-        self.AllTimeLowPeriod = AllTimeLowPeriod
+        self.VibrationPeriod = VibrationPeriod
+        self.VibrationRatio = VibrationRatio
         self.Leverage = Leverage
         self.RemainMoney = self.InitMoney*self.Leverage
         self.TrueMoney = InitMoney
@@ -40,11 +43,14 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         self.AllData = MyPredictDB.GetAllDataFromAList(self.AllList,EndDate,AllTimeHighPeriod+totalPeriod)
         print("Calculating all time highs")
         self.AllTimeHigh = {}
+        self.AllTimeLow = {}
+        self.AllTimeLowPeriod = 30
         self.Vibration = {}
         RemoveData = []
         for anitem in self.AllData:
             # get all time high
             alltimehigh = {}
+            alltimelow = {}
             AVibration = {}
             AMeanVibration = {}
             ADayVibration = {}
@@ -59,7 +65,8 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             allClosePrices = TheStockData[2]
             allHighPrices = TheStockData[3]
             allLowPrices = TheStockData[4]
-            allVibration = numpy.abs(numpy.array(allClosePrices)-numpy.array(allOpenPrices))
+            #allVibration = numpy.abs(numpy.array(allClosePrices)-numpy.array(allOpenPrices))
+            allVibration = numpy.abs(numpy.array(allHighPrices)-numpy.array(allLowPrices))
             allDates = TheStockData[0]
             for i in range(len(allDates)):
                 if theStartDate==allDates[i]:
@@ -73,6 +80,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             try:
                 for i in range(startIndex+1):
                     lastIndex = min(i+1+AllTimeHighPeriod,len(allClosePrices))
+                    lastVibrationIndex = min(i+1+self.VibrationPeriod,len(allClosePrices))
                     lastLowIndex = min(i+1+self.AllTimeLowPeriod,len(allClosePrices))
                     #print lastIndex
                     #print i
@@ -84,31 +92,41 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                         alltimehigh[currentStringFormatDate]=False
                     
                     #calculate vibration
-                    AMeanVibration[currentStringFormatDate] = numpy.mean(allVibration[i+1:lastLowIndex])
+                    AMeanVibration[currentStringFormatDate] = numpy.mean(allVibration[i+1:lastVibrationIndex])
                     ADayVibration[currentStringFormatDate] = TheStockData[1][i]-allClosePrices[i]
-                    if ADayVibration[currentStringFormatDate]>3.5*AMeanVibration[currentStringFormatDate]:
+                    if ADayVibration[currentStringFormatDate]>self.VibrationRatio*AMeanVibration[currentStringFormatDate]:
                         AVibration[currentStringFormatDate] = True
                     else:
                         AVibration[currentStringFormatDate] = False
+                    
+                    if allClosePrices[i]<min(allClosePrices[i+1:lastLowIndex]):
+                        alltimelow[allDates[i].strftime('%Y-%m-%d')] = True
+                    else:
+                        alltimelow[allDates[i].strftime('%Y-%m-%d')] = False
                         
                 od = collections.OrderedDict(sorted(alltimehigh.items(),reverse=True))
                 self.AllTimeHigh[anitem] = od
                 
-                odlow = collections.OrderedDict(sorted(AVibration.items(),reverse=True))
+                odVibration = collections.OrderedDict(sorted(AVibration.items(),reverse=True))
                 odlowMean = collections.OrderedDict(sorted(AMeanVibration.items(),reverse=True))
                 odlowADay = collections.OrderedDict(sorted(ADayVibration.items(),reverse=True))
-                self.Vibration[anitem] = [odlow,odlowMean,odlowADay]
+                self.Vibration[anitem] = [odVibration,odlowMean,odlowADay]
                 
+                odlow = collections.OrderedDict(sorted(alltimelow.items(),reverse=True))
+                self.AllTimeLow[anitem] = odlow
             except:
                 if anitem in self.AllTimeHigh:
                     del self.AllTimeHigh[anitem]
                 if anitem in self.Vibration:
                     del self.Vibration[anitem]
+                if anitem in self.AllTimeLow:
+                    del self.AllTImeLow[anitem]
                 RemoveData.append(anitem)
                 
         for anitem in RemoveData:
             del self.AllData[anitem]
             
+        
     def SellNow(self,Symbol,aDate): 
         '''
         If the price is lower than 3% of the buying price, sell it
@@ -122,7 +140,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         
         BuyInfo = self.CurrentList[Symbol]
         # if it is the same day of buying, return false
-        LastBuyDay = BuyInfo[-1][2]
+        LastBuyDay = BuyInfo[-1].OpenDate
         if aDate==LastBuyDay:
             return [False,0.0]
         
@@ -152,12 +170,13 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         TheBuyData = self.CurrentList[Symbol]
         TotalNumber = 0
         for anitem in TheBuyData:
-            BuyMoney += anitem[0]*anitem[1]
-            TotalNumber += anitem[0]
+            BuyMoney += anitem.HoldingNumber*anitem.OpenPrice
+            TotalNumber += anitem.HoldingNumber
         i=0
         while TheDatas[0][i]!=APreDate.date():
             i+=1
         ClosePrice = TheDatas[2][i]*TotalNumber
+        ProfitLose = self.CalculateMaxProfitAndLose(Symbol, TheDatas[2][i])
         if (BuyMoney-ClosePrice)>=self.InitMoney*0.025:
             #if (BuyMoney-ClosePrice)>=150.00:
             print 'Buy money is '+str(BuyMoney)+' Close money is '+str(ClosePrice)+'. The possible money is '+str(BuyMoney-ClosePrice)
@@ -168,6 +187,15 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             MeanVibration = self.Vibration[Symbol][1]
             ADayVibration = self.Vibration[Symbol][2]
             print 'The day vibration is '+str(ADayVibration[APreDate.strftime('%Y-%m-%d')])+'. Average vibration is '+str(MeanVibration[APreDate.strftime('%Y-%m-%d')])
+            return [True,TheDatas[1][i-1]]
+        # all time low
+        elif self.AllTimeLow[Symbol][APreDate.strftime('%Y-%m-%d')]==True:
+            print 'CLose at 30 days low yesterday.'
+            return [True,TheDatas[1][i-1]]
+        #profit lose
+        elif ProfitLose[0]:
+            print 'Profit lose more than 30%. '
+            print ProfitLose
             return [True,TheDatas[1][i-1]]
         else:
             return [False,0.0]
@@ -218,9 +246,14 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             #print ("there is not enough money. "+str(self.RemainMoney)+". The stock price is "+str(BuyPrice))
             return
         
+        if self.Commission*2/self.RemainMoney>0.02:
+            return
+        
+        
+        
         if BuyPrice>0.0:
             MaxNumberHold = numpy.floor(self.RemainMoney/BuyPrice)
-            NumberHold = self.CalculatePositionSize(self.TrueMoney, Symbol, theDate, BuyPrice, ratio=0.025)
+            NumberHold = self.CalculatePositionSize(self.TrueMoney, Symbol, theDate, BuyPrice, ratio=0.025,VibrationRatio=self.VibrationRatio)
             if NumberHold==0:
                 return
 
@@ -230,16 +263,22 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             Margin = NumberHold*BuyPrice/self.Leverage
             if self.TrueMoney<self.Margin+Margin+self.Commission:
                 return
+            
+            if self.TrueMoney/(self.Margin+Margin)<1.3:
+                return
+            
+            
             self.Margin += Margin
             self.TrueMoney -= self.Commission
             self.RemainMoney = (self.TrueMoney-self.Margin)*self.Leverage
             print [self.TrueMoney,self.Margin,self.RemainMoney]
+            thehold = Holding(BuyPrice,NumberHold,theDate,Margin) 
             if Symbol in self.CurrentList:
                 current = self.CurrentList[Symbol]
-                current.append([NumberHold,BuyPrice,theDate])
+                current.append(thehold)
                 self.CurrentList[Symbol] = current
             else:
-                self.CurrentList[Symbol] = [[NumberHold,BuyPrice,theDate]]
+                self.CurrentList[Symbol] = [thehold]
                 
             print('buy '+str(NumberHold)+' '+Symbol +' with price '+str(BuyPrice)+' at '+theDate)
             print("we remain cash "+str(self.RemainMoney))    
@@ -255,10 +294,10 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             BuyMoney = 0.0
             
             for anitem in holdings:
-                SellMoney += anitem[0]*SellPrice
-                print('Sell '+str(anitem[0])+' '+Symbol +' with price '+str(SellPrice)+' at '+SellDate)
+                SellMoney += anitem.HoldingNumber*SellPrice
+                print('Sell '+str(anitem.HoldingNumber)+' '+Symbol +' with price '+str(SellPrice)+' at '+SellDate)
                 # calculate total buy number and money
-                BuyMoney += anitem[0]*anitem[1]
+                BuyMoney += anitem.HoldingNumber*anitem.OpenPrice
                 Commission +=self.Commission
             self.TrueMoney +=SellMoney-BuyMoney-self.Commission
             self.Margin -=BuyMoney/self.Leverage
@@ -268,12 +307,12 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 self.RemainMoney = (self.TrueMoney-self.Margin)*self.Leverage
             print [self.TrueMoney,self.Margin,self.RemainMoney]
             #self.RemainMoney +=SellMoney-10
-            BuyDate = holdings[-1][2]
+            BuyDate = holdings[-1].OpenDate
             BuyDate = datetime.datetime.strptime(BuyDate,'%Y-%m-%d').date()
             SellDate = datetime.datetime.strptime(SellDate,'%Y-%m-%d').date()
             HoldingDays = (SellDate-BuyDate).days
             # win or lose
-            if SellMoney-BuyMoney<self.Commission*2:
+            if SellMoney-BuyMoney<self.Commission+Commission:
                 self.Lose['Time']+=1
                 self.Lose['Money'].append(BuyMoney-SellMoney+self.Commission+Commission)
                 self.Lose['Min'] = numpy.min(self.Lose['Money'])
@@ -291,7 +330,8 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 print('Win. '+'We hold it for '+str(HoldingDays)+' days. We win '+str(SellMoney - BuyMoney-self.Commission-Commission))
         else:
             print("We are not holding "+Symbol)
-        print("we remain cash "+str(self.RemainMoney))        
+        print("we remain cash "+str(self.RemainMoney))   
+     
     
     def RunAStrategy(self):
         '''
@@ -302,6 +342,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         theStartDate = datetime.datetime.strptime(self.StartDate,'%Y-%m-%d')
         theEndDate = datetime.datetime.strptime(self.EndDate,'%Y-%m-%d')
         currentDate = theStartDate
+        MinimumMoney = [1e10,datetime.date.today()]
         while currentDate<=theEndDate:
             if len(self.CurrentList)<self.StockNumber:
                 BuyRes = self.GetBuyList(currentDate.strftime('%Y-%m-%d'))
@@ -316,6 +357,9 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 if SellOrNot:
                     self.SellAStock(asymbol, SellPrice, currentDate.strftime('%Y-%m-%d'))
                     removed.append(asymbol)
+                    CurrentMoney = self.CalculateTotalMoney(currentDate.strftime('%Y-%m-%d'))
+                    if CurrentMoney<MinimumMoney[0]:
+                        MinimumMoney = [CurrentMoney,currentDate]
             for anitem in removed:
                 del self.CurrentList[anitem]
             currentDate+=timedelta(days=1)
@@ -327,8 +371,8 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             thedata = self.CurrentList[anitem]
             totalnum = 0
             for adata in thedata:
-                totalnum += adata[0]
-                totalBuyMoney += adata[0]*adata[1]
+                totalnum += adata.HoldingNumber
+                totalBuyMoney += adata.HoldingNumber*adata.OpenPrice
             print('We are holding '+str(totalnum) +' '+anitem)
             print('The current price is '+str(thecurrentdata[anitem][2][0]))
             themoney = totalnum*thecurrentdata[anitem][2][0]
@@ -358,9 +402,60 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         print('Current true money '+str(self.TrueMoney))
         print('Current buy money '+str(totalBuyMoney))
         print('Current sell money '+str(totalmoney))
+        print('Minimum Money is '+str(MinimumMoney[0])+' '+MinimumMoney[1].strftime('%Y-%m-%d'))
         return [Percentage,self.Win,self.Lose,Profit,Expect]
-
-
+    
+    
+    def CalculateMaxProfitAndLose(self,asymbol,ClosePrice):
+        '''
+        @param asymbol:
+        @param aDate: String format %Y-%m-%d  
+        '''
+        CurrentHolds = self.CurrentList[asymbol]
+        TotalProfit = 0.0
+        TotalMaxprofit = 0.0
+        TotalBuyMoney = 0.0
+        
+        for anitem in CurrentHolds:
+            profit = (ClosePrice - anitem.OpenPrice)*anitem.HoldingNumber
+            if profit>0 and profit>anitem.MaximumProfit:
+                anitem.MaximumProfit = profit
+            elif profit<0 and profit<anitem.MaximumLose:
+                anitem.MaximumLose = profit
+            TotalProfit += profit
+            TotalMaxprofit += anitem.MaximumProfit
+            TotalBuyMoney += anitem.OpenPrice*anitem.HoldingNumber
+            
+            
+        if TotalProfit>0 and TotalProfit<TotalMaxprofit*0.7 and (TotalBuyMoney+TotalMaxprofit)/TotalBuyMoney>1.50:
+            return [True,profit,anitem.MaximumProfit]
+        else:
+            return [False,profit,anitem.MaximumProfit]
+            
+    def CalculateTotalMoney(self,OneDay):
+        '''
+        @param OneDay: 
+        '''
+        todayIndex = 0
+        ADate = datetime.datetime.strptime(OneDay,'%Y-%m-%d')
+        TheDatas = self.AllData['AAPL']
+        while TheDatas[0][todayIndex]!=ADate.date():
+            todayIndex+=1
+        totalBuyMoney = 0.0
+        totalmoney = 0.0
+        thecurrentdata = self.AllData
+        for anitem in self.CurrentList:
+            thedata = self.CurrentList[anitem]
+            totalnum = 0
+            for adata in thedata:
+                totalnum += adata.HoldingNumber
+                totalBuyMoney += adata.HoldingNumber*adata.OpenPrice
+            #print('We are holding '+str(totalnum) +' '+anitem)
+            #print('The current price is '+str(thecurrentdata[anitem][2][todayIndex]))
+            themoney = totalnum*thecurrentdata[anitem][2][todayIndex]
+            totalmoney += themoney
+        FinalMoney = self.TrueMoney-totalBuyMoney+totalmoney
+        return FinalMoney
 
 if __name__=='__main__':
     
@@ -382,7 +477,7 @@ if __name__=='__main__':
         for aname in anitem:
             if not aname in BigLists:
                 BigLists.append(aname)
-    #BigLists = PrepareData.GetBigCompany('../data/BigCompany.txt')
+    BigLists = PrepareData.GetBigCompany('../data/BigCompany.txt')
     BigLists.remove('BLL')
     Step='Test'
     if Step=='Test':
@@ -397,7 +492,7 @@ if __name__=='__main__':
             temp = []
             for j in [10,20,30,60]:
             #for j in [20]:
-                astrategy = BuyATHExitBigVibration(5000,StartDate,EndDate,i,j,BigLists,20,5)
+                astrategy = BuyATHExitBigVibration(7000,StartDate,EndDate,i,j,BigLists,20,5)
                 #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
                 [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
                 print 'i==='+str(i)+'\tj===='+str(j)
