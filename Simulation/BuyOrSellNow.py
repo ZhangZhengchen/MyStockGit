@@ -86,13 +86,18 @@ if __name__=='__main__':
     BigLists = PrepareData.GetBigCompany("../data/BigCompany.txt")
     Step='Buy'
     if Step=='Buy':
-        EndDate = '2017-07-20'
-        GetBuyListToday(EndDate,BigLists)
+        EndDate = datetime.date.today()
+        EndDateStr = EndDate.strftime('%Y-%m-%d')
+        #EndDate = '2017-07-20'
+        print EndDateStr
+        GetBuyListToday(EndDateStr,BigLists)
         
     Step = 'SellOrNot'
     if Step=='SellOrNot':
-        EndDate = '2017-07-19'
-        Symbols = ['NVDA','CCL','AVY','TSLA','FB','BA','GILD','DOV']
-        ShallSellToday(EndDate, Symbols, BigLists)
-        ShallSellTodayVibration(EndDate,Symbols,BigLists)
+        SellDate = EndDate-datetime.timedelta(days=1)
+        EndDateStr = SellDate.strftime('%Y-%m-%d')
+        print EndDateStr
+        Symbols = ['NVDA','CCL','AVY','TSLA','FB','BA','GILD','DOV','UNH','MS','JNJ']
+        ShallSellToday(EndDateStr, Symbols, BigLists)
+        ShallSellTodayVibration(EndDateStr,Symbols,BigLists)
         

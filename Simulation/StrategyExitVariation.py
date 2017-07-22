@@ -19,6 +19,7 @@ class Holding():
         self.MarginRequired = MarginRequired
         self.MaximumProfit = 0.0
         self.MaximumLose = 0.0
+        self.StopLoss = 0.0
 
 class BuyATHExitBigVibration(VolumeChangeExistLow):
     def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,VibrationPeriod = 10,StockList = [],StockNumber = 3, Leverage=5,VibrationRatio=3.5):
@@ -144,12 +145,12 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         if aDate==LastBuyDay:
             return [False,0.0]
         
-        
         aDateDate = datetime.datetime.strptime(aDate,'%Y-%m-%d').date()
         TheDatas = self.AllData[Symbol]
         # weekend, public holiday etc.
         if not aDateDate in TheDatas[0]:
             return [False,0.0]
+        
         
         ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
         ThePreviousDay -= datetime.timedelta(days=1)
@@ -177,10 +178,15 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             i+=1
         ClosePrice = TheDatas[2][i]*TotalNumber
         ProfitLose = self.CalculateMaxProfitAndLose(Symbol, TheDatas[2][i])
-        if (BuyMoney-ClosePrice)>=self.InitMoney*0.025:
+        #MaxLoseMoney = numpy.min([200,self.TrueMoney*0.025])
+        MaxLoseMoney = self.TrueMoney*0.025
+        if (BuyMoney-ClosePrice)>=MaxLoseMoney:
             #if (BuyMoney-ClosePrice)>=150.00:
             print 'Buy money is '+str(BuyMoney)+' Close money is '+str(ClosePrice)+'. The possible money is '+str(BuyMoney-ClosePrice)
-            print 'Threshold is '+str(self.InitMoney*0.025*len(TheBuyData))
+            print 'Threshold is '+str(MaxLoseMoney)
+            return [True,TheDatas[1][i-1]]
+        elif TheDatas[2][i]<TheBuyData[-1].StopLoss:
+            print('Price is lower than the stop loss. Close Price is '+str(TheDatas[2][i])+' Stop loss is '+str(TheBuyData[-1].StopLoss))
             return [True,TheDatas[1][i-1]]
         # if all time low, sell        
         elif ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
@@ -220,14 +226,17 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         TheVibration = MeanVibrations[OpenDate]
         StopLose = VibrationRatio*TheVibration
         TotalLose = TrueMoney*ratio
+        #TotalLose = numpy.min([200,TotalLose])
         if StopLose<=0:
-            return 0
+            return [0,0]
         if TrueMoney<OpenPrice:
-            return 0
+            return [0,0]
         if TotalLose<StopLose:
-            return 0
+            return [0,0]
         PositionSize = numpy.floor(TotalLose/StopLose)
-        return PositionSize    
+        if self.Commission*2/(PositionSize*OpenPrice)>0.02:
+            return [0,0]
+        return [PositionSize,OpenPrice-StopLose]    
     
     def BuyAStock(self,theDate,Symbol,BuyPrice):
         '''
@@ -253,7 +262,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         
         if BuyPrice>0.0:
             MaxNumberHold = numpy.floor(self.RemainMoney/BuyPrice)
-            NumberHold = self.CalculatePositionSize(self.TrueMoney, Symbol, theDate, BuyPrice, ratio=0.025,VibrationRatio=self.VibrationRatio)
+            [NumberHold,StopPrice] = self.CalculatePositionSize(self.TrueMoney, Symbol, theDate, BuyPrice, ratio=0.025,VibrationRatio=self.VibrationRatio)
             if NumberHold==0:
                 return
 
@@ -264,15 +273,16 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             if self.TrueMoney<self.Margin+Margin+self.Commission:
                 return
             
-            if self.TrueMoney/(self.Margin+Margin)<1.3:
-                return
+            #if self.TrueMoney/(self.Margin+Margin)<1.5:
+            #    return
             
             
             self.Margin += Margin
             self.TrueMoney -= self.Commission
             self.RemainMoney = (self.TrueMoney-self.Margin)*self.Leverage
             print [self.TrueMoney,self.Margin,self.RemainMoney]
-            thehold = Holding(BuyPrice,NumberHold,theDate,Margin) 
+            thehold = Holding(BuyPrice,NumberHold,theDate,Margin)
+            thehold.StopLoss =  StopPrice
             if Symbol in self.CurrentList:
                 current = self.CurrentList[Symbol]
                 current.append(thehold)
@@ -281,6 +291,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 self.CurrentList[Symbol] = [thehold]
                 
             print('buy '+str(NumberHold)+' '+Symbol +' with price '+str(BuyPrice)+' at '+theDate)
+            print('Stop loss price is '+str(StopPrice))
             print("we remain cash "+str(self.RemainMoney))    
             
     def SellAStock(self,Symbol,SellPrice,SellDate):
@@ -492,7 +503,7 @@ if __name__=='__main__':
             temp = []
             for j in [10,20,30,60]:
             #for j in [20]:
-                astrategy = BuyATHExitBigVibration(7000,StartDate,EndDate,i,j,BigLists,20,5)
+                astrategy = BuyATHExitBigVibration(7000,StartDate,EndDate,i,j,BigLists,40,8)
                 #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
                 [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
                 print 'i==='+str(i)+'\tj===='+str(j)
