@@ -14,8 +14,9 @@ def GetBuyListToday(EndDate,BigLists):
     PreDate = datetime.datetime.strptime(EndDate,'%Y-%m-%d')
     PreDate -= datetime.timedelta(days=1)
     for i in [90,100,120,150]:
-        j = 30
-        astrategy = VolumeChangeExistLow(5000,'2017-01-04',PreDate.strftime('%Y-%m-%d'),i,j,BigLists,3)
+        j = 10
+        #astrategy = VolumeChangeExistLow(5000,'2017-01-04',PreDate.strftime('%Y-%m-%d'),i,j,BigLists,3)
+        astrategy = BuyATHExitBigVibration(7000,'2017-01-04',PreDate.strftime('%Y-%m-%d'),i,j,BigLists,40,8)
         #astrategy.RunAStrategy()
         res = astrategy.GetBuyListNow(EndDate)
         #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
@@ -86,18 +87,19 @@ if __name__=='__main__':
     BigLists = PrepareData.GetBigCompany("../data/BigCompany.txt")
     Step='Buy'
     if Step=='Buy':
-        EndDate = datetime.date.today()
-        EndDateStr = EndDate.strftime('%Y-%m-%d')
-        #EndDate = '2017-07-20'
+        #EndDate = datetime.date.today()
+        #EndDateStr = EndDate.strftime('%Y-%m-%d')
+        EndDateStr = '2017-07-22'
         print EndDateStr
         GetBuyListToday(EndDateStr,BigLists)
         
     Step = 'SellOrNot'
     if Step=='SellOrNot':
-        SellDate = EndDate-datetime.timedelta(days=1)
-        EndDateStr = SellDate.strftime('%Y-%m-%d')
+        #SellDate = EndDate-datetime.timedelta(days=1)
+        #EndDateStr = SellDate.strftime('%Y-%m-%d')
+        EndDateStr = '2017-07-21'
         print EndDateStr
-        Symbols = ['NVDA','CCL','AVY','TSLA','FB','BA','GILD','DOV','UNH','MS','JNJ']
+        Symbols = ['NVDA','CCL','AVY','TSLA','FB','BA','GILD','DOV','UNH','MS','JNJ','PVH']
         ShallSellToday(EndDateStr, Symbols, BigLists)
         ShallSellTodayVibration(EndDateStr,Symbols,BigLists)
         

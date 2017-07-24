@@ -121,7 +121,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 if anitem in self.Vibration:
                     del self.Vibration[anitem]
                 if anitem in self.AllTimeLow:
-                    del self.AllTImeLow[anitem]
+                    del self.AllTimeLow[anitem]
                 RemoveData.append(anitem)
                 
         for anitem in RemoveData:
@@ -467,7 +467,95 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             totalmoney += themoney
         FinalMoney = self.TrueMoney-totalBuyMoney+totalmoney
         return FinalMoney
-
+    
+    
+    def GetBuyListNow(self,aDate):
+        '''
+        @param aDate: string format
+        @return:   a list of stocks. Each item in the list [Symbol,BuyPrice]
+        #Get the stocks achieved all time high yesterday.
+        #Then buy at the open price today.
+        #The stock is ordered by the volume*close price yesterday.
+        '''
+        StockList = []
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        APreDate = ThePreviousDay
+        
+        for anitem in self.AllTimeHigh:
+            ThisSymbolData = self.AllTimeHigh[anitem]
+            dayinterval = 0
+            while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                APreDate -= datetime.timedelta(days=1)
+                dayinterval+=1
+            if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                continue
+                
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
+                PrePreDate = APreDate-datetime.timedelta(days=1)
+                i=0
+                while i<4 and not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    PrePreDate -= datetime.timedelta(days=1)
+                    i+=1
+                if not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    StockList.append(anitem)
+                else:
+                    if ThisSymbolData[PrePreDate.strftime('%Y-%m-%d')]==False:
+                        StockList.append(anitem)
+                #StockList.append(anitem)
+        #sort the stocks according to the volume increase
+        TheCompany = []
+        for asymbol in StockList:
+            TheSymbolData = self.AllData[asymbol]
+            i = 0
+            while TheSymbolData[0][i]!=APreDate.date():
+                i+=1
+            PreVolume = TheSymbolData[-1][i]
+            PrePreVolume = 0
+            for k in range(1,6):
+                if i+k<len(TheSymbolData[-1]):
+                    PrePreVolume+=TheSymbolData[-1][i+k]
+                else:
+                    break
+            if k>0:
+                PrePreVolume = PrePreVolume/k
+            else:
+                PrePreVolume = PreVolume
+            if PrePreVolume>0:
+                TheCompany.append(float(PreVolume)/float(PrePreVolume))
+            else:
+                TheCompany.append(1)
+        #print(TheCompany)
+        #print(StockList)   
+        
+        Index = numpy.argsort(TheCompany)
+        #print('argsort result')
+        #print(Index)
+        Index = list(reversed(Index))
+        #print('reverse index')
+        #print(Index)
+        SortedList = [None]*len(StockList)
+        for i in range(len(StockList)):
+            SortedList[i] = StockList[Index[i]]
+        ReturnList =[]
+        
+        StopLosses = []
+        for asymbol in SortedList:
+            MeanVibrations = self.Vibration[asymbol][1]
+            if not APreDate.strftime('%Y-%m-%d') in MeanVibrations:
+                print 'Error! The date is not in list.'
+                print APreDate.strftime('%Y-%m-%d')+' '+asymbol
+                return 0
+            TheVibration = MeanVibrations[APreDate.strftime('%Y-%m-%d')]
+            StopLose = self.VibrationRatio*TheVibration
+            StopLosses.append(StopLose)
+        
+        #print SortedList
+        #print OpenPrices
+        for i in range(len(SortedList)):
+            ReturnList.append([SortedList[i],StopLosses[i]])
+        return ReturnList
+        
 if __name__=='__main__':
     
     Step=''
