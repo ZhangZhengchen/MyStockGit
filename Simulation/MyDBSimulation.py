@@ -11,7 +11,6 @@ import numpy as np
 from datetime import timedelta
 from abc import abstractmethod
 import collections
-from bokeh.properties import This
 #Get a date, 
 #Get all data, 
 #Get Predict, 

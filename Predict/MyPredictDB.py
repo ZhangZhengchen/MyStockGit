@@ -11,7 +11,7 @@ import datetime
 from datetime import timedelta
 import time
 
-con = mdb.connect('localhost', 'root', '', 'nasdaq')
+con = mdb.connect('127.0.0.1', 'root', 'root', 'nasdaq')
 TheVolume = 100000
 def GetDataFromATable(thesql):
     #read recent data 15 days

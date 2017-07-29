@@ -10,6 +10,7 @@ from Predict import MyPredictDB
 import numpy 
 from data import PrepareData
 from datetime import timedelta
+import matplotlib.pyplot as plt
 
 class Holding():
     def __init__(self,OpenPrice,HoldingNumber,OpenDate,MarginRequired,StopLoss=0.0):
@@ -36,6 +37,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         self.Margin = 0.0
         self.Commission = 15
         self.AllList = StockList
+        self.TrueMoneyList = {}
         # Get all data
         theStartDate = datetime.datetime.strptime(self.StartDate,'%Y-%m-%d').date()
         theEndDate = datetime.datetime.strptime(self.EndDate,'%Y-%m-%d').date()
@@ -397,6 +399,8 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                         MinimumMoney = [CurrentMoney,currentDate]
             for anitem in removed:
                 del self.CurrentList[anitem]
+            #save the true money
+            self.TrueMoneyList[currentDate]=self.TrueMoney
             currentDate+=timedelta(days=1)
             
         thecurrentdata = self.AllData
@@ -438,6 +442,11 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         print('Current buy money '+str(totalBuyMoney))
         print('Current sell money '+str(totalmoney))
         print('Minimum Money is '+str(MinimumMoney[0])+' '+MinimumMoney[1].strftime('%Y-%m-%d'))
+        TrueMoneyListSorted = collections.OrderedDict(sorted(self.TrueMoneyList.items(),reverse=True))
+        fig, ax = plt.subplots(1)
+        ax.plot(TrueMoneyListSorted.keys(),TrueMoneyListSorted.values())
+        fig.autofmt_xdate()
+        plt.show()
         return [Percentage,self.Win,self.Lose,Profit,Expect]
     
     
