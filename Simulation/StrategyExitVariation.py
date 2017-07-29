@@ -12,14 +12,14 @@ from data import PrepareData
 from datetime import timedelta
 
 class Holding():
-    def __init__(self,OpenPrice,HoldingNumber,OpenDate,MarginRequired):
+    def __init__(self,OpenPrice,HoldingNumber,OpenDate,MarginRequired,StopLoss=0.0):
         self.OpenPrice = OpenPrice
         self.HoldingNumber = HoldingNumber
         self.OpenDate = OpenDate
         self.MarginRequired = MarginRequired
         self.MaximumProfit = 0.0
         self.MaximumLose = 0.0
-        self.StopLoss = 0.0
+        self.StopLoss = StopLoss
 
 class BuyATHExitBigVibration(VolumeChangeExistLow):
     def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,VibrationPeriod = 10,StockList = [],StockNumber = 3, Leverage=5,VibrationRatio=3.5):
@@ -67,7 +67,15 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             allHighPrices = TheStockData[3]
             allLowPrices = TheStockData[4]
             #allVibration = numpy.abs(numpy.array(allClosePrices)-numpy.array(allOpenPrices))
-            allVibration = numpy.abs(numpy.array(allHighPrices)-numpy.array(allLowPrices))
+            PreClosePrices = allClosePrices[1:]
+            PreClosePrices.append(0.0)
+            HMinPreClose = numpy.array(allHighPrices)-numpy.array(PreClosePrices)
+            PreCloseMinL = numpy.array(PreClosePrices) - numpy.array(allLowPrices)
+            HighMinLow = numpy.array(allHighPrices)-numpy.array(allLowPrices)
+            allVibration = []
+            for viIndex in range(len(HMinPreClose)):
+                allVibration.append(numpy.max([HMinPreClose[viIndex],PreCloseMinL[viIndex],HighMinLow[viIndex]]))
+            
             allDates = TheStockData[0]
             for i in range(len(allDates)):
                 if theStartDate==allDates[i]:
@@ -94,8 +102,9 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                     
                     #calculate vibration
                     AMeanVibration[currentStringFormatDate] = numpy.mean(allVibration[i+1:lastVibrationIndex])
-                    ADayVibration[currentStringFormatDate] = TheStockData[1][i]-allClosePrices[i]
-                    if ADayVibration[currentStringFormatDate]>self.VibrationRatio*AMeanVibration[currentStringFormatDate]:
+                    #ADayVibration[currentStringFormatDate] = allHighPrices[i]-allLowPrices[i]
+                    ADayVibration[currentStringFormatDate] = numpy.max([allHighPrices[i]-allLowPrices[i],allHighPrices[i]-allClosePrices[i+1],allClosePrices[i+1]-allLowPrices[i]])
+                    if ADayVibration[currentStringFormatDate]>self.VibrationRatio*AMeanVibration[currentStringFormatDate] and allClosePrices[i]<allOpenPrices[i]:
                         AVibration[currentStringFormatDate] = True
                     else:
                         AVibration[currentStringFormatDate] = False
@@ -128,7 +137,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             del self.AllData[anitem]
             
         
-    def SellNow(self,Symbol,aDate): 
+    def SellNow(self,Symbol,aDate,beTesting = True): 
         '''
         If the price is lower than 3% of the buying price, sell it
         @param aDate: string format 2017-01-01 
@@ -148,7 +157,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         aDateDate = datetime.datetime.strptime(aDate,'%Y-%m-%d').date()
         TheDatas = self.AllData[Symbol]
         # weekend, public holiday etc.
-        if not aDateDate in TheDatas[0]:
+        if not aDateDate in TheDatas[0] and beTesting:
             return [False,0.0]
         
         
@@ -157,7 +166,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         APreDate = ThePreviousDay
         
         ThisSymbolData = self.Vibration[Symbol][0]
-        if not aDate in ThisSymbolData:
+        if not aDate in ThisSymbolData and beTesting:
             return [False,0.0] 
         dayinterval = 0
         while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
@@ -184,25 +193,40 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             #if (BuyMoney-ClosePrice)>=150.00:
             print 'Buy money is '+str(BuyMoney)+' Close money is '+str(ClosePrice)+'. The possible money is '+str(BuyMoney-ClosePrice)
             print 'Threshold is '+str(MaxLoseMoney)
-            return [True,TheDatas[1][i-1]]
+            if beTesting:
+                return [True,TheDatas[1][i-1]]
+            else:
+                return [True,0.0]
         elif TheDatas[2][i]<TheBuyData[-1].StopLoss:
             print('Price is lower than the stop loss. Close Price is '+str(TheDatas[2][i])+' Stop loss is '+str(TheBuyData[-1].StopLoss))
-            return [True,TheDatas[1][i-1]]
+            if beTesting:
+                return [True,TheDatas[1][i-1]]
+            else:
+                return [True,0.0]
         # if all time low, sell        
         elif ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
             MeanVibration = self.Vibration[Symbol][1]
             ADayVibration = self.Vibration[Symbol][2]
             print 'The day vibration is '+str(ADayVibration[APreDate.strftime('%Y-%m-%d')])+'. Average vibration is '+str(MeanVibration[APreDate.strftime('%Y-%m-%d')])
-            return [True,TheDatas[1][i-1]]
+            if beTesting:
+                return [True,TheDatas[1][i-1]]
+            else:
+                return [True,0.0]
         # all time low
         elif self.AllTimeLow[Symbol][APreDate.strftime('%Y-%m-%d')]==True:
             print 'CLose at 30 days low yesterday.'
-            return [True,TheDatas[1][i-1]]
+            if beTesting:
+                return [True,TheDatas[1][i-1]]
+            else:
+                return [True,0.0]
         #profit lose
         elif ProfitLose[0]:
             print 'Profit lose more than 30%. '
             print ProfitLose
-            return [True,TheDatas[1][i-1]]
+            if beTesting:
+                return [True,TheDatas[1][i-1]]
+            else:
+                return [True,0.0]
         else:
             return [False,0.0]
         
@@ -273,8 +297,8 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             if self.TrueMoney<self.Margin+Margin+self.Commission:
                 return
             
-            #if self.TrueMoney/(self.Margin+Margin)<1.5:
-            #    return
+            if self.TrueMoney/(self.Margin+Margin)<1.3:
+                return
             
             
             self.Margin += Margin
