@@ -68,6 +68,14 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             allClosePrices = TheStockData[2]
             allHighPrices = TheStockData[3]
             allLowPrices = TheStockData[4]
+            ###
+            #sometimes there is 0 in the data, this is an error. We fix it using a simple method.
+            self._fixZeroValues(allOpenPrices)
+            self._fixZeroValues(allClosePrices)
+            self._fixZeroValues(allHighPrices)
+            self._fixZeroValues(allLowPrices)
+                        
+            ###
             #allVibration = numpy.abs(numpy.array(allClosePrices)-numpy.array(allOpenPrices))
             PreClosePrices = allClosePrices[1:]
             PreClosePrices.append(0.0)
@@ -138,7 +146,17 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         for anitem in RemoveData:
             del self.AllData[anitem]
             
-        
+    def _fixZeroValues(self,AnArray):
+        for checkindex in range(len(AnArray)):
+                if AnArray[checkindex]==0:
+                    if checkindex==0:
+                        tempindex = checkindex+1
+                        while AnArray[tempindex]==0:
+                            tempindex+=1
+                        AnArray[checkindex] = AnArray[tempindex]
+                    else:
+                        AnArray[checkindex] = AnArray[checkindex-1]
+                            
     def SellNow(self,Symbol,aDate,beTesting = True): 
         '''
         If the price is lower than 3% of the buying price, sell it

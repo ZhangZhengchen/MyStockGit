@@ -118,7 +118,7 @@ class GetData(object):
         
         thedates = []
         close=[]
-        open = []
+        openprice = []
         high = []
         low = []
         volume = []
@@ -144,12 +144,12 @@ class GetData(object):
             close.insert(0,cdata[1])
             high.insert(0,cdata[2])
             low.insert(0,cdata[3])
-            open.insert(0,cdata[4])
+            openprice.insert(0,cdata[4])
             volume.insert(0,cdata[5])   
             #print parsed_data[-1]
             
        
-        return [thedates,close,high,low,open,volume]
+        return [thedates,close,high,low,openprice,volume]
     
     def GetStockHistoryChartAPI(self,monthrange,stockid):
         '''

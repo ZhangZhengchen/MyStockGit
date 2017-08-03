@@ -14,7 +14,7 @@ import copy
 import sklearn.preprocessing as prep
 from data import PrepareData
 
-con = mdb.connect('127.0.0.1', 'root', 'root', 'nasdaq')  
+con = mdb.connect('localhost', 'root', 'root', 'nasdaq')  
 def CreateDailyTable():
     with con:
         cur = con.cursor()

@@ -14,7 +14,7 @@ class PlotClass(object):
     def drawData(self, date, openp, closep, highp, lowp, volume,SaveImage=False,SaveName=''):
         try:
             plt.close()
-            fig = plt.figure(facecolor='#ffffff',figsize=(12,8))
+            fig = plt.figure(facecolor='#ffffff',figsize=(5,5))
             x = 0
             y = len(date)
             newAr = []

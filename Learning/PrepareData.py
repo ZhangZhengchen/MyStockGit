@@ -40,7 +40,7 @@ def GetPicturesAndLabels(AllData,KnownDays=100,PredictDays=10,StepDays=5,UpThres
         TheData[5].reverse()
         i = 0
         TotalNum = len(dates)
-        f=open('./data/'+asymbol+'.txt','w')
+        f=open('./data/Stock/'+asymbol+'.txt','w')
         while i+KnownDays+PredictDays<TotalNum:
             KnownDates = dates[i:i+KnownDays]
             KnownOpen = TheData[1][i:i+KnownDays]
@@ -48,7 +48,7 @@ def GetPicturesAndLabels(AllData,KnownDays=100,PredictDays=10,StepDays=5,UpThres
             KnownHigh = TheData[3][i:i+KnownDays]
             KnownLow = TheData[4][i:i+KnownDays]
             KnownVolume = TheData[5][i:i+KnownDays]
-            savename = './data/'+asymbol+'_'+TheData[0][i+KnownDays-1].strftime('%Y-%m-%d')+'.png'
+            savename = './data/Stock/'+asymbol+'_'+TheData[0][i+KnownDays-1].strftime('%Y-%m-%d')+'.png'
             plt.drawData(KnownDates, KnownOpen, KnownClose,KnownHigh,KnownLow,KnownVolume,True,savename)
             lastClose = KnownClose[-1]
             NextHigh = np.max(TheData[3][i+KnownDays:i+KnownDays+PredictDays])
