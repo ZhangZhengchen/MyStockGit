@@ -132,6 +132,7 @@ def GetAllDataFromAList(StockList,theDate,datanumber=25):
             theName = StockList[i]
             if theName.find('^')>0:
                 continue 
+            theName = theName.lower()
             #print theName
             data = []
             thesql = 'select * from '+theName+'daily where pricedate<=\''+theDate+'\' order by pricedate desc limit '+str(datanumber)
