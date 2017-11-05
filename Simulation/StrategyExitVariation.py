@@ -11,19 +11,13 @@ import numpy
 from data import PrepareData
 from datetime import timedelta
 import matplotlib.pyplot as plt
+from data.StockHistory import ReadStockHistoryFromCSV,GetSPXInfo
+from StrategyFunctions import Holding
 
-class Holding():
-    def __init__(self,OpenPrice,HoldingNumber,OpenDate,MarginRequired,StopLoss=0.0):
-        self.OpenPrice = OpenPrice
-        self.HoldingNumber = HoldingNumber
-        self.OpenDate = OpenDate
-        self.MarginRequired = MarginRequired
-        self.MaximumProfit = 0.0
-        self.MaximumLose = 0.0
-        self.StopLoss = StopLoss
 
-class BuyATHExitBigVibration(VolumeChangeExistLow):
-    def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,VibrationPeriod = 10,StockList = [],StockNumber = 3, Leverage=5,VibrationRatio=3.5):
+class BuyATHExitBigVibration(SimulationBaseClass):
+    def __init__(self,InitMoney,StartDate,EndDate,AllTimeHighPeriod=200,AllTimeLowPeriod =30,VibrationPeriod = 10,\
+                 StockList = [],StockNumber = 3, Leverage=5,VibrationRatio=3.5, BeTesting=False):
         '''
         @param AllTimeHighPeriod: one year all time high or one month all time high? the unit is days
         @param DownPercent: must >0 and <1 
@@ -37,17 +31,24 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         self.Margin = 0.0
         self.Commission = 15
         self.AllList = StockList
+        
         self.TrueMoneyList = {}
         # Get all data
         theStartDate = datetime.datetime.strptime(self.StartDate,'%Y-%m-%d').date()
         theEndDate = datetime.datetime.strptime(self.EndDate,'%Y-%m-%d').date()
         totalPeriod = (theEndDate-theStartDate).days
+        self.SPYData = []
         print("Getting all data")
-        self.AllData = MyPredictDB.GetAllDataFromAList(self.AllList,EndDate,AllTimeHighPeriod+totalPeriod)
+        if not BeTesting:
+            self.AllData = MyPredictDB.GetAllDataFromAList(self.AllList,EndDate,AllTimeHighPeriod+totalPeriod)
+        else:
+            self.SPYData = GetSPXInfo()
+            self.AllData = {}
+            ReadStockHistoryFromCSV(self.StartDate,self.EndDate,AllTimeHighPeriod,self.AllData)
         print("Calculating all time highs")
         self.AllTimeHigh = {}
         self.AllTimeLow = {}
-        self.AllTimeLowPeriod = 30
+        self.AllTimeLowPeriod = AllTimeLowPeriod
         self.Vibration = {}
         RemoveData = []
         for anitem in self.AllData:
@@ -247,6 +248,12 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 return [True,TheDatas[1][i-1]]
             else:
                 return [True,0.0]
+        elif APreDate in self.SPYData and \
+        ((self.SPYData[APreDate][0]<self.SPYData[APreDate][2] and self.SPYData[APreDate][1]>self.SPYData[APreDate][2])\
+        or (self.SPYData[APreDate][0]<self.SPYData[APreDate][1] and self.SPYData[APreDate][1]<self.SPYData[APreDate][2]) ):
+            print 'SPY close below 200 day'
+            print self.SPYData[APreDate]
+            return [True,TheDatas[1][i-1]]
         else:
             return [False,0.0]
         
@@ -324,6 +331,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
             self.Margin += Margin
             self.TrueMoney -= self.Commission
             self.RemainMoney = (self.TrueMoney-self.Margin)*self.Leverage
+            print('After Buying [TrueMoney,Margin,RemainBuyPower]')
             print [self.TrueMoney,self.Margin,self.RemainMoney]
             thehold = Holding(BuyPrice,NumberHold,theDate,Margin)
             thehold.StopLoss =  StopPrice
@@ -360,6 +368,7 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 self.RemainMoney = 0.0
             else:
                 self.RemainMoney = (self.TrueMoney-self.Margin)*self.Leverage
+            print('After selling [TrueMoney,Margin,RemainBuyPower]')
             print [self.TrueMoney,self.Margin,self.RemainMoney]
             #self.RemainMoney +=SellMoney-10
             BuyDate = holdings[-1].OpenDate
@@ -401,10 +410,14 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         while currentDate<=theEndDate:
             if len(self.CurrentList)<self.StockNumber:
                 BuyRes = self.GetBuyList(currentDate.strftime('%Y-%m-%d'))
+                TodayNumber=0
                 for anitem in BuyRes:
                     self.BuyAStock(currentDate.strftime('%Y-%m-%d'), anitem[0], anitem[1])
                     if len(self.CurrentList)==self.StockNumber:
                         break
+                    TodayNumber+=1
+                #if TodayNumber>=5:
+                #    break
             removed = []
             for i in range(len(self.CurrentList)):
                 asymbol = self.CurrentList.keys()[i]
@@ -412,13 +425,15 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 if SellOrNot:
                     self.SellAStock(asymbol, SellPrice, currentDate.strftime('%Y-%m-%d'))
                     removed.append(asymbol)
-                    CurrentMoney = self.CalculateTotalMoney(currentDate.strftime('%Y-%m-%d'))
-                    if CurrentMoney<MinimumMoney[0]:
-                        MinimumMoney = [CurrentMoney,currentDate]
+            CurrentMoney = self.CalculateTotalMoney(currentDate.strftime('%Y-%m-%d'))
+            if CurrentMoney<MinimumMoney[0] and CurrentMoney>0.0:
+                MinimumMoney = [CurrentMoney,currentDate]
             for anitem in removed:
                 del self.CurrentList[anitem]
             #save the true money
-            self.TrueMoneyList[currentDate]=self.TrueMoney
+            #self.TrueMoneyList[currentDate]=self.TrueMoney
+            if CurrentMoney>0.0:
+                self.TrueMoneyList[currentDate]=CurrentMoney
             currentDate+=timedelta(days=1)
             
         thecurrentdata = self.AllData
@@ -459,12 +474,14 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         print('Current true money '+str(self.TrueMoney))
         print('Current buy money '+str(totalBuyMoney))
         print('Current sell money '+str(totalmoney))
-        print('Minimum Money is '+str(MinimumMoney[0])+' '+MinimumMoney[1].strftime('%Y-%m-%d'))
+        print('Minimum Market Value is '+str(MinimumMoney[0])+' '+MinimumMoney[1].strftime('%Y-%m-%d'))
         TrueMoneyListSorted = collections.OrderedDict(sorted(self.TrueMoneyList.items(),reverse=True))
-        fig, ax = plt.subplots(1)
-        ax.plot(TrueMoneyListSorted.keys(),TrueMoneyListSorted.values())
-        fig.autofmt_xdate()
-        plt.show()
+        beDraw = True
+        if beDraw:
+            fig, ax = plt.subplots(1)
+            ax.plot(TrueMoneyListSorted.keys(),TrueMoneyListSorted.values())
+            fig.autofmt_xdate()
+            plt.show()
         return [Percentage,self.Win,self.Lose,Profit,Expect]
     
     
@@ -499,9 +516,11 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         @param OneDay: 
         '''
         todayIndex = 0
-        ADate = datetime.datetime.strptime(OneDay,'%Y-%m-%d')
+        ADate = datetime.datetime.strptime(OneDay,'%Y-%m-%d').date()
         TheDatas = self.AllData['AAPL']
-        while TheDatas[0][todayIndex]!=ADate.date():
+        if not ADate in TheDatas[0]:
+            return -10.0
+        while TheDatas[0][todayIndex]!=ADate:
             todayIndex+=1
         totalBuyMoney = 0.0
         totalmoney = 0.0
@@ -519,6 +538,105 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
         FinalMoney = self.TrueMoney-totalBuyMoney+totalmoney
         return FinalMoney
     
+    def GetBuyList(self,aDate):
+        '''
+        @param aDate: string format
+        @return:   a list of stocks. Each item in the list [Symbol,BuyPrice]
+        Get the stocks achieved all time high yesterday.
+        Then buy at the open price today.
+        The stock is ordered by the volume*close price yesterday.
+        '''
+        StockList = []
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        APreDate = ThePreviousDay
+        for anitem in self.AllTimeHigh:
+            ThisSymbolData = self.AllTimeHigh[anitem]
+            if not aDate in ThisSymbolData:
+                continue
+            dayinterval = 0
+            while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                APreDate -= datetime.timedelta(days=1)
+                dayinterval+=1
+            if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                continue
+            
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==False:
+                continue
+            
+            if APreDate in self.SPYData:
+                TodaySPYData = self.SPYData[APreDate]
+                #if TodaySPYData[0]<TodaySPYData[1] or TodaySPYData[1]<TodaySPYData[2]:
+                if (TodaySPYData[0]<TodaySPYData[1] and TodaySPYData[1]>TodaySPYData[2])\
+                or (TodaySPYData[1]<TodaySPYData[2] and TodaySPYData[0]<TodaySPYData[2]):
+                    continue
+                
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
+                PrePreDate = APreDate-datetime.timedelta(days=1)
+                i=0
+                while i<4 and not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    PrePreDate -= datetime.timedelta(days=1)
+                    i+=1
+                if not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    StockList.append(anitem)
+                else:
+                    if ThisSymbolData[PrePreDate.strftime('%Y-%m-%d')]==False:
+                        StockList.append(anitem)
+                #StockList.append(anitem)
+        #sort the stocks according to the volume increase
+        TheCompany = []
+        for asymbol in StockList:
+            TheSymbolData = self.AllData[asymbol]
+            i = 0
+            while TheSymbolData[0][i]!=APreDate.date():
+                i+=1
+            PreVolume = TheSymbolData[-1][i]
+            PrePreVolume = 0
+            for k in range(1,6):
+                if i+k<len(TheSymbolData[-1]):
+                    PrePreVolume+=TheSymbolData[-1][i+k]
+                else:
+                    break
+            if k>0:
+                PrePreVolume = PrePreVolume/k
+            else:
+                PrePreVolume = PreVolume
+            if PrePreVolume>0:
+                TheCompany.append(float(PreVolume)/float(PrePreVolume))
+            else:
+                TheCompany.append(1)
+        #print(TheCompany)
+        #print(StockList)   
+        
+        Index = numpy.argsort(TheCompany)
+        #print('argsort result')
+        #print(Index)
+        Index = list(reversed(Index))
+        #print('reverse index')
+        #print(Index)
+        SortedList = [None]*len(StockList)
+        for i in range(len(StockList)):
+            SortedList[i] = StockList[Index[i]]
+        OpenPrices = []
+        theDate = datetime.datetime.strptime(aDate,'%Y-%m-%d').date()
+        #print theDate
+        for asymbol in SortedList:
+            TheDatas = self.AllData[asymbol]
+            #print TheDatas[0]
+            i = 0
+            for adate in TheDatas[0]:
+                #print adate
+                if adate==theDate:
+                    OpenPrices.append(TheDatas[1][i])
+                    break
+                i+=1
+        ReturnList =[]
+        
+        #print SortedList
+        #print OpenPrices
+        for i in range(len(SortedList)):
+            ReturnList.append([SortedList[i],OpenPrices[i]])
+        return ReturnList
     
     def GetBuyListNow(self,aDate):
         '''
@@ -541,6 +659,109 @@ class BuyATHExitBigVibration(VolumeChangeExistLow):
                 dayinterval+=1
             if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
                 continue
+            
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==False:
+                continue
+            
+            if APreDate in self.SPYData:
+                TodaySPYData = self.SPYData[APreDate]
+                if TodaySPYData[0]<TodaySPYData[1] or TodaySPYData[1]<TodaySPYData[2]:
+                    continue
+                
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
+                PrePreDate = APreDate-datetime.timedelta(days=1)
+                i=0
+                while i<4 and not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    PrePreDate -= datetime.timedelta(days=1)
+                    i+=1
+                if not PrePreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                    StockList.append(anitem)
+                else:
+                    if ThisSymbolData[PrePreDate.strftime('%Y-%m-%d')]==False:
+                        StockList.append(anitem)
+                #StockList.append(anitem)
+        #sort the stocks according to the volume increase
+        TheCompany = []
+        for asymbol in StockList:
+            TheSymbolData = self.AllData[asymbol]
+            i = 0
+            while TheSymbolData[0][i]!=APreDate.date():
+                i+=1
+            PreVolume = TheSymbolData[-1][i]
+            PrePreVolume = 0
+            for k in range(1,6):
+                if i+k<len(TheSymbolData[-1]):
+                    PrePreVolume+=TheSymbolData[-1][i+k]
+                else:
+                    break
+            if k>0:
+                PrePreVolume = PrePreVolume/k
+            else:
+                PrePreVolume = PreVolume
+            if PrePreVolume>0:
+                TheCompany.append(float(PreVolume)/float(PrePreVolume))
+            else:
+                TheCompany.append(1)
+        #print(TheCompany)
+        #print(StockList)   
+        
+        Index = numpy.argsort(TheCompany)
+        #print('argsort result')
+        #print(Index)
+        Index = list(reversed(Index))
+        #print('reverse index')
+        #print(Index)
+        SortedList = [None]*len(StockList)
+        for i in range(len(StockList)):
+            SortedList[i] = StockList[Index[i]]
+        ReturnList =[]
+        
+        StopLosses = []
+        for asymbol in SortedList:
+            MeanVibrations = self.Vibration[asymbol][1]
+            if not APreDate.strftime('%Y-%m-%d') in MeanVibrations:
+                print 'Error! The date is not in list.'
+                print APreDate.strftime('%Y-%m-%d')+' '+asymbol
+                return 0
+            TheVibration = MeanVibrations[APreDate.strftime('%Y-%m-%d')]
+            StopLose = self.VibrationRatio*TheVibration
+            StopLosses.append(StopLose)
+        
+        #print SortedList
+        #print OpenPrices
+        for i in range(len(SortedList)):
+            ReturnList.append([SortedList[i],StopLosses[i]])
+        return ReturnList
+    
+    def GetSellListNow(self,aDate):
+        '''
+        @param aDate: string format
+        @return:   a list of stocks. Each item in the list [Symbol,BuyPrice]
+        #Get the stocks achieved all time high yesterday.
+        #Then buy at the open price today.
+        #The stock is ordered by the volume*close price yesterday.
+        '''
+        StockList = []
+        ThePreviousDay = datetime.datetime.strptime(aDate,'%Y-%m-%d')
+        ThePreviousDay -= datetime.timedelta(days=1)
+        APreDate = ThePreviousDay
+        
+        for anitem in self.AllTimeLow:
+            ThisSymbolData = self.AllTimeLow[anitem]
+            dayinterval = 0
+            while dayinterval<4 and not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                APreDate -= datetime.timedelta(days=1)
+                dayinterval+=1
+            if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
+                continue
+            
+            if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==False:
+                continue
+            
+            #if APreDate in self.SPYData:
+            #    TodaySPYData = self.SPYData[APreDate]
+            #    if TodaySPYData[0]<TodaySPYData[1] or TodaySPYData[1]<TodaySPYData[2]:
+            #        continue
                 
             if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
                 PrePreDate = APreDate-datetime.timedelta(days=1)
@@ -629,26 +850,30 @@ if __name__=='__main__':
                 BigLists.append(aname)
     BigLists = PrepareData.GetBigCompany('../data/BigCompany.txt')
     BigLists.remove('BLL')
+    BigLists.remove('CMCSA')
     Step='Test'
     if Step=='Test':
-        StartDate = '2016-01-04'
+        StartDate = '2014-01-08'
         #StartDate = '2015-01-06'
         #EndDate = '2016-01-25'
-        EndDate = '2017-07-05'
+        EndDate = '2017-07-31'
         AllRes = {}
         AllVar = {}
-        for i in [60,90,100,120,150]:
-        #for i in [90]:
+        #for i in [60,90,100,120,150]:
+        for i in [100]:
             temp = []
-            for j in [10,20,30,60]:
-            #for j in [20]:
-                astrategy = BuyATHExitBigVibration(7000,StartDate,EndDate,i,j,BigLists,40,8)
-                #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
-                [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
-                print 'i==='+str(i)+'\tj===='+str(j)
-                AllRes[str(i)+','+str(j)] = [Percent,AverageProfit,Expection]
-                temp.append(Percent)
-                print '=====================================\n\n\n'
+            #for j in [10,20,30,60]:
+            for j in [10]:
+                #for vr in [2.4,2.7,3.0,3.3]:
+                for vr in [3.5]:
+                    astrategy = BuyATHExitBigVibration(7000,StartDate,EndDate,i,j,BigLists,StockNumber=40,\
+                                                       Leverage=8,VibrationRatio=vr,BeTesting=True)
+                    #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
+                    [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
+                    print 'i==='+str(i)+'\tj===='+str(j)+'\tvr==='+str(vr)
+                    AllRes[str(i)+','+str(j)+','+str(vr)] = [Percent,AverageProfit,Expection]
+                    temp.append(Percent)
+                    print '=====================================\n\n\n'
             AllVar[i] = [numpy.mean(temp),numpy.std(temp)]
         AllRes = collections.OrderedDict(sorted(AllRes.items()))
         for anitem in AllRes:

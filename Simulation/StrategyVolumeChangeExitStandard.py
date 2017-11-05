@@ -231,6 +231,8 @@ class VolumeChangeExistLow(SimulationBaseClass):
                 dayinterval+=1
             if not APreDate.strftime('%Y-%m-%d') in ThisSymbolData:
                 continue
+            
+            
                 
             if ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
                 PrePreDate = APreDate-datetime.timedelta(days=1)
