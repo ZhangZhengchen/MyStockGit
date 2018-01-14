@@ -7,7 +7,6 @@ import datetime
 from datetime import timedelta
 import collections
 import copy
-from Tkconstants import LAST
 
 class Condition(object):
     '''

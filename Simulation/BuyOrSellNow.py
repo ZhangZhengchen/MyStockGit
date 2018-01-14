@@ -3,6 +3,9 @@ Created on 2017 7 12
 
 @author: Yali
 '''
+import sys
+sys.path.append('../')
+sys.path.append('../DataRelated')
 import datetime
 from StrategyVolumeChangeExitStandard import VolumeChangeExistLow,SellAllTimeLow
 import numpy
@@ -22,7 +25,7 @@ def GetBuyListToday(EndDate,BigLists):
         #astrategy.RunAStrategy()
         res = astrategy.GetBuyListNow(EndDate)
         #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
-        print res
+        print(res)
         print('\n')
 
 def GetSellListToday(EndDate,BigLists):
@@ -37,7 +40,7 @@ def GetSellListToday(EndDate,BigLists):
             #astrategy.RunAStrategy()
             res = astrategy.GetSellListNow(EndDate)
             #res = astrategy.ShouldBeSellNow('AAPL', '2017-06-15', '2017-05-03', 146)
-            print res
+            print(res)
             print('\n')
         
 def ShallSellToday(EndDate,BigLists,SymbolList):
@@ -68,11 +71,11 @@ def ShallSellToday(EndDate,BigLists,SymbolList):
                         break
             LowestValue = numpy.min(TheData[2][startindex+1:startindex+j+1])
             if TheData[2][startindex]<LowestValue:
-                print 'SELL '+asymbol+'. Last close price is '+str(TheData[2][startindex])
+                print('SELL '+asymbol+'. Last close price is '+str(TheData[2][startindex]))
             else:
-                print 'Don\'t sell ' +asymbol+'. Last close price is '+str(TheData[2][startindex])
+                print('Don\'t sell ' +asymbol+'. Last close price is '+str(TheData[2][startindex]))
             #print astrategy.SellNow(asymbol, EndDate)
-            print 'The Lowest value is '+str(LowestValue)+'. It should be your stop loss price\n\n\n'
+            print('The Lowest value is '+str(LowestValue)+'. It should be your stop loss price\n\n\n')
             
 
 def ShallSellTodayVibration(EndDate,BigLists,CurrentList):
@@ -104,9 +107,9 @@ def ShallSellTodayVibration(EndDate,BigLists,CurrentList):
             meanVibration = numpy.mean(numpy.abs(numpy.array(TheData[3][startindex+1:startindex+j+1])-numpy.array(TheData[4][startindex+1:startindex+j+1])))
             todayVibration = TheData[3][startindex] - TheData[4][startindex]
             if todayVibration>astrategy.VibrationRatio*meanVibration and TheData[1][startindex]>TheData[2][startindex]:
-                print 'SELL '+asymbol+'. Mean vibration is '+str(meanVibration)+'. Today vibration is '+str(todayVibration)
+                print ('SELL '+asymbol+'. Mean vibration is '+str(meanVibration)+'. Today vibration is '+str(todayVibration))
             else:
-                print 'Don\'t sell ' +asymbol+'. Mean vibration is '+str(meanVibration)+'. Today vibration is '+str(todayVibration)
+                print ('Don\'t sell ' +asymbol+'. Mean vibration is '+str(meanVibration)+'. Today vibration is '+str(todayVibration))
             
             Today = PreDate+datetime.timedelta(days=1)
             res = astrategy.SellNow(asymbol, Today.strftime('%Y-%m-%d'),beTesting=False)
@@ -119,13 +122,13 @@ if __name__=='__main__':
     
     Step=''
     BigLists = PrepareData.GetBigCompany("../data/BigCompany.txt")
-    EndDateStr = '2017-11-03'
+    EndDateStr = '2018-01-12'
     Step='Buy'
     if Step=='Buy':
         #EndDate = datetime.date.today()
         #EndDateStr = EndDate.strftime('%Y-%m-%d')
         
-        print EndDateStr
+        print( EndDateStr)
         GetBuyListToday(EndDateStr,BigLists)
     
     Step='Sell'
@@ -133,7 +136,7 @@ if __name__=='__main__':
         print('=================Sell list=================')
         #EndDate = datetime.date.today()
         #EndDateStr = EndDate.strftime('%Y-%m-%d')
-        print EndDateStr
+        print (EndDateStr)
         GetSellListToday(EndDateStr,BigLists)
         
     Step = 'SellOrNot'
@@ -141,7 +144,7 @@ if __name__=='__main__':
         #SellDate = EndDate-datetime.timedelta(days=1)
         #EndDateStr = SellDate.strftime('%Y-%m-%d')
         
-        print EndDateStr
+        print (EndDateStr)
         CurrentList = {}
         ratio = 1.36
         '''CurrentList['TSLA'] = [Holding(314.89,10,'2017-07-10',924.72/ratio,308.00)]
@@ -158,9 +161,9 @@ if __name__=='__main__':
         CurrentList['KMX'] = [Holding(66.83,40,'2017-07-27',363.32/ratio,63.5)]
         CurrentList['V'] = [Holding(99.43,30,'2017-07-28',362.08/ratio,95.7)]
         CurrentList['PYPL'] = [Holding(60.35,45,'2017-07-28',362.08/ratio,57)]'''
-        CurrentList['TXT'] = [Holding(51.718,40,'2017-09-12',279.65/ratio,48.5)]
-        CurrentList['BABA'] = [Holding(176.44,13,'2017-09-14',619.71/ratio,165)]
-        CurrentList['BA'] = [Holding(247.89,10,'2017-09-15',334.65/ratio,230.0)]
+        CurrentList['INTC'] = [Holding(45.58,35,'2017-12-19',217.98/ratio,42.5)]
+        CurrentList['F'] = [Holding(12.74,150,'2017-12-19',257.43/ratio,12.35)]
+        CurrentList['ABBV'] = [Holding(99.12,15,'2017-12-19',198.51/ratio,94)]
         ShallSellToday(EndDateStr, BigLists,CurrentList)
         #EndDateStr = '2017-07-31'
         ShallSellTodayVibration(EndDateStr,BigLists,CurrentList)

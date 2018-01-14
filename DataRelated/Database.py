@@ -5,6 +5,7 @@ Created on 2017 3 25
 '''
 import MySQLdb as mdb
 import sys
+sys.path.append('./')
 import time
 import Condition
 import numpy as np
@@ -26,11 +27,11 @@ def CreateDailyTable():
             try:
                 theSQL = 'create table '+theName[0].lower()+'daily ('\
                 'pricedate DATE, open float, close float, high float, low float, volume bigint)'
-                print theSQL
+                print (theSQL)
                 cur.execute(theSQL)
             except:
-                print 'error'
-            print theName[0]
+                print('error')
+            print(theName[0])
             
 def DeleteDataInAllTable():
     with con:
@@ -51,12 +52,12 @@ def DeleteDataInAllTable():
                     cur.execute(theSQL)
                     con.commit()
                 #theSQL = 'delete from '+theName[0]+'daily'
-                #print theSQL
+                #print(theSQL
                 #cur.execute(theSQL)
                 #con.commit()
             except:
-                print 'error'
-            print theName
+                print('error')
+            print(theName)
 
 def DeleteRemovedCompanyInDatabase():
     with con:
@@ -77,12 +78,12 @@ def DeleteRemovedCompanyInDatabase():
                     cur.execute(theSQL)
                     con.commit()
                 #theSQL = 'delete from '+theName[0]+'daily'
-                #print theSQL
+                #print(theSQL
                 #cur.execute(theSQL)
                 #con.commit()
             except:
-                print 'error'
-            print theName
+                print('error')
+            print(theName)
 
 def DeleteAllData():
     with con:
@@ -97,8 +98,8 @@ def DeleteAllData():
                 con.commit()
                 
             except:
-                print 'error'
-            print theName
+                print('error')
+            print(theName)
             
 def UpdateDailyDataForATable(tablename):
     '''
@@ -122,7 +123,7 @@ def GetSectors():
     return []
 
 def GenerateFeatureForMachineLearning(SectorName):
-    print SectorName
+    print(SectorName)
     TheSectorName = SectorName.replace(' ','')
     featurefile = './ML/'+TheSectorName+'.csv'
     testFeatureFile = './ML/'+TheSectorName+'_test.csv'
@@ -168,8 +169,8 @@ def GenerateFeatureForMachineLearning(SectorName):
                 thestr = ''
                 for k in range(i-context,i+1):
                     for m in range(featureLength):
-                        #print 'k='+str(k)
-                        #print 'm='+str(m)
+                        #print('k='+str(k)
+                        #print('m='+str(m)
                         thestr += str(AllFeature[m][k])+','
                 thestr = thestr+str(Labels[i])
                 f.write(thestr+'\n')
@@ -374,7 +375,7 @@ def GenerateFeatureForATable(tablename):
                 LowPrices.append(theName[4])
                 Volumes.append(theName[5])
             except:
-                print 'error'
+                print('error')
         #####################
         #####################
         features = GenerateFeatures(Dates, OpenPrices, ClosePrices, HighPrices, LowPrices, Volumes)
@@ -393,7 +394,7 @@ def UpdateData():
     for i in range(len(row)):
         theName = row[i][0]
         theName = theName.lower()
-        print theName
+        print(theName)
         UpdateDataForATable(theName)
         #UpdateDataForATable_FullUpdate(theName)
         time.sleep(2)
@@ -408,7 +409,7 @@ def UpdateSomeData(StockList):
     for i in range(len(StockList)):
         theName = StockList[i]
         theName = theName.lower()
-        print theName
+        print(theName)
         UpdateDataForATable(theName)
         #UpdateDataForATable_FullUpdate(theName)
         time.sleep(2)
@@ -436,7 +437,7 @@ def UpdateDataForATable_FullUpdate(symbol):
             for i in range(len(row)):
                 AllExistDates.append(row[i][0])
     except:
-        print 'Error at get latest date in UpdateDataForATable'
+        print('Error at get latest date in UpdateDataForATable')
         return
     # compare date
     values = []
@@ -447,15 +448,15 @@ def UpdateDataForATable_FullUpdate(symbol):
         else:
             values.append((curdate,res[4][i],res[1][i],res[2][i],res[3][i],int(res[5][i])))
     
-    #print values
+    #print(values
     #insert values'
     try:
         theSQL = 'insert into '+symbol+'daily values('
         a = cur.executemany(theSQL+'%s,%s,%s,%s,%s,%s)',values)
         con.commit()
     except:
-        print 'error in inserting values'
-        print theSQL
+        print('error in inserting values')
+        print(theSQL)
         cur.close()
         return
     cur.close()
@@ -481,7 +482,7 @@ def UpdateDataForATable(symbol):
         else:
             thedate = row[0][0]
     except:
-        print 'Error at get latest date in UpdateDataForATable'
+        print('Error at get latest date in UpdateDataForATable')
         return
     # compare date
     values = []
@@ -492,15 +493,15 @@ def UpdateDataForATable(symbol):
         else:
             values.append((curdate,res[4][i],res[1][i],res[2][i],res[3][i],int(res[5][i])))
     
-    #print values
+    #print(values
     #insert values'
     try:
         theSQL = 'insert into '+symbol+'daily values('
         a = cur.executemany(theSQL+'%s,%s,%s,%s,%s,%s)',values)
         con.commit()
     except:
-        print 'error in inserting values'
-        print theSQL
+        print('error in inserting values')
+        print(theSQL)
         cur.close()
         return
     cur.close() 

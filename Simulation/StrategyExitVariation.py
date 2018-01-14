@@ -212,8 +212,8 @@ class BuyATHExitBigVibration(SimulationBaseClass):
         MaxLoseMoney = self.TrueMoney*0.025
         if (BuyMoney-ClosePrice)>=MaxLoseMoney:
             #if (BuyMoney-ClosePrice)>=150.00:
-            print 'Buy money is '+str(BuyMoney)+' Close money is '+str(ClosePrice)+'. The possible money is '+str(BuyMoney-ClosePrice)
-            print 'Threshold is '+str(MaxLoseMoney)
+            print( 'Buy money is '+str(BuyMoney)+' Close money is '+str(ClosePrice)+'. The possible money is '+str(BuyMoney-ClosePrice))
+            print( 'Threshold is '+str(MaxLoseMoney))
             if beTesting:
                 return [True,TheDatas[1][i-1]]
             else:
@@ -228,22 +228,22 @@ class BuyATHExitBigVibration(SimulationBaseClass):
         elif ThisSymbolData[APreDate.strftime('%Y-%m-%d')]==True:
             MeanVibration = self.Vibration[Symbol][1]
             ADayVibration = self.Vibration[Symbol][2]
-            print 'The day vibration is '+str(ADayVibration[APreDate.strftime('%Y-%m-%d')])+'. Average vibration is '+str(MeanVibration[APreDate.strftime('%Y-%m-%d')])
+            print( 'The day vibration is '+str(ADayVibration[APreDate.strftime('%Y-%m-%d')])+'. Average vibration is '+str(MeanVibration[APreDate.strftime('%Y-%m-%d')]))
             if beTesting:
                 return [True,TheDatas[1][i-1]]
             else:
                 return [True,0.0]
         # all time low
         elif self.AllTimeLow[Symbol][APreDate.strftime('%Y-%m-%d')]==True:
-            print 'CLose at 30 days low yesterday.'
+            print( 'CLose at 30 days low yesterday.')
             if beTesting:
                 return [True,TheDatas[1][i-1]]
             else:
                 return [True,0.0]
         #profit lose
         elif ProfitLose[0]:
-            print 'Profit lose more than 30%. '
-            print ProfitLose
+            print( 'Profit lose more than 30%. ')
+            print( ProfitLose)
             if beTesting:
                 return [True,TheDatas[1][i-1]]
             else:
@@ -251,8 +251,8 @@ class BuyATHExitBigVibration(SimulationBaseClass):
         elif APreDate in self.SPYData and \
         ((self.SPYData[APreDate][0]<self.SPYData[APreDate][2] and self.SPYData[APreDate][1]>self.SPYData[APreDate][2])\
         or (self.SPYData[APreDate][0]<self.SPYData[APreDate][1] and self.SPYData[APreDate][1]<self.SPYData[APreDate][2]) ):
-            print 'SPY close below 200 day'
-            print self.SPYData[APreDate]
+            print( 'SPY close below 200 day')
+            print( self.SPYData[APreDate])
             return [True,TheDatas[1][i-1]]
         else:
             return [False,0.0]
@@ -271,8 +271,8 @@ class BuyATHExitBigVibration(SimulationBaseClass):
         # Get Mean Vibration
         MeanVibrations = self.Vibration[Symbol][1]
         if not OpenDate in MeanVibrations:
-            print 'Error! The date is not in list.'
-            print OpenDate+' '+Symbol
+            print( 'Error! The date is not in list.')
+            print( OpenDate+' '+Symbol)
             return 0
         TheVibration = MeanVibrations[OpenDate]
         StopLose = VibrationRatio*TheVibration
@@ -303,7 +303,7 @@ class BuyATHExitBigVibration(SimulationBaseClass):
             return
         
         if self.RemainMoney<BuyPrice:
-            #print ("there is not enough money. "+str(self.RemainMoney)+". The stock price is "+str(BuyPrice))
+            #print( ("there is not enough money. "+str(self.RemainMoney)+". The stock price is "+str(BuyPrice))
             return
         
         if self.Commission*2/self.RemainMoney>0.02:
@@ -332,7 +332,7 @@ class BuyATHExitBigVibration(SimulationBaseClass):
             self.TrueMoney -= self.Commission
             self.RemainMoney = (self.TrueMoney-self.Margin)*self.Leverage
             print('After Buying [TrueMoney,Margin,RemainBuyPower]')
-            print [self.TrueMoney,self.Margin,self.RemainMoney]
+            print( [self.TrueMoney,self.Margin,self.RemainMoney])
             thehold = Holding(BuyPrice,NumberHold,theDate,Margin)
             thehold.StopLoss =  StopPrice
             if Symbol in self.CurrentList:
@@ -369,7 +369,7 @@ class BuyATHExitBigVibration(SimulationBaseClass):
             else:
                 self.RemainMoney = (self.TrueMoney-self.Margin)*self.Leverage
             print('After selling [TrueMoney,Margin,RemainBuyPower]')
-            print [self.TrueMoney,self.Margin,self.RemainMoney]
+            print( [self.TrueMoney,self.Margin,self.RemainMoney])
             #self.RemainMoney +=SellMoney-10
             BuyDate = holdings[-1].OpenDate
             BuyDate = datetime.datetime.strptime(BuyDate,'%Y-%m-%d').date()
@@ -720,15 +720,15 @@ class BuyATHExitBigVibration(SimulationBaseClass):
         for asymbol in SortedList:
             MeanVibrations = self.Vibration[asymbol][1]
             if not APreDate.strftime('%Y-%m-%d') in MeanVibrations:
-                print 'Error! The date is not in list.'
-                print APreDate.strftime('%Y-%m-%d')+' '+asymbol
+                print( 'Error! The date is not in list.')
+                print( APreDate.strftime('%Y-%m-%d')+' '+asymbol)
                 return 0
             TheVibration = MeanVibrations[APreDate.strftime('%Y-%m-%d')]
             StopLose = self.VibrationRatio*TheVibration
             StopLosses.append(StopLose)
         
-        #print SortedList
-        #print OpenPrices
+        #print( SortedList
+        #print( OpenPrices
         for i in range(len(SortedList)):
             ReturnList.append([SortedList[i],StopLosses[i]])
         return ReturnList
@@ -815,8 +815,8 @@ class BuyATHExitBigVibration(SimulationBaseClass):
         for asymbol in SortedList:
             MeanVibrations = self.Vibration[asymbol][1]
             if not APreDate.strftime('%Y-%m-%d') in MeanVibrations:
-                print 'Error! The date is not in list.'
-                print APreDate.strftime('%Y-%m-%d')+' '+asymbol
+                print( 'Error! The date is not in list.')
+                print( APreDate.strftime('%Y-%m-%d')+' '+asymbol)
                 return 0
             TheVibration = MeanVibrations[APreDate.strftime('%Y-%m-%d')]
             StopLose = self.VibrationRatio*TheVibration
@@ -856,7 +856,7 @@ if __name__=='__main__':
         StartDate = '2014-01-08'
         #StartDate = '2015-01-06'
         #EndDate = '2016-01-25'
-        EndDate = '2017-07-31'
+        EndDate = '2014-07-31'
         AllRes = {}
         AllVar = {}
         #for i in [60,90,100,120,150]:
@@ -870,13 +870,12 @@ if __name__=='__main__':
                                                        Leverage=8,VibrationRatio=vr,BeTesting=True)
                     #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
                     [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
-                    print 'i==='+str(i)+'\tj===='+str(j)+'\tvr==='+str(vr)
+                    print( 'i==='+str(i)+'\tj===='+str(j)+'\tvr==='+str(vr))
                     AllRes[str(i)+','+str(j)+','+str(vr)] = [Percent,AverageProfit,Expection]
                     temp.append(Percent)
-                    print '=====================================\n\n\n'
+                    print( '=====================================\n\n\n')
             AllVar[i] = [numpy.mean(temp),numpy.std(temp)]
         AllRes = collections.OrderedDict(sorted(AllRes.items()))
         for anitem in AllRes:
-            print anitem+'\t'+str(AllRes[anitem])
-        
-        print AllVar        
+            print( anitem+'\t'+str(AllRes[anitem]))
+        print(AllVar) 

@@ -354,9 +354,9 @@ class BuyAllTimeHigh(SimulationBaseClass):
                 maxPriceSinceBuy=TheDatas[2][i]
             i-=1
         if TheDatas[0][i]!=aDateDate:
-            print "These two dates should be same"
-            print TheDatas[0][i]
-            print aDateDate
+            print ("These two dates should be same")
+            print (TheDatas[0][i])
+            print (aDateDate)
             return [False,0.0]
         
         # last close

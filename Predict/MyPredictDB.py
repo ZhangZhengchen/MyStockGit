@@ -5,7 +5,7 @@ Created on 2016 11 6
 '''
 import MySQLdb as mdb
 import numpy as np
-from DataRelated import Condition, Database
+from DataRelated import Database
 import operator
 import datetime
 from datetime import timedelta
@@ -42,7 +42,7 @@ def GetDataFromATable(thesql):
                 LowPrices.append(theName[4])
                 Volumes.append(theName[5])
             except:
-                print 'error'
+                print ('error')
         return [Dates,OpenPrices,ClosePrices,HighPrices,LowPrices,Volumes]
 
 def GetSMAAtADate(theStock,dayNumber,theDate):
@@ -123,7 +123,7 @@ def GetUpTrendStocks(StartDate):
     
     sorted_x = sorted(AllDic.items(), key=operator.itemgetter(1))
     for anitem in sorted_x:
-        print anitem
+        print (anitem)
 
 def GetAllDataFromAList(StockList,theDate,datanumber=25):
     AllDic = {}
@@ -196,7 +196,7 @@ def GetPotentialStocks(StartDate,DateNumber=40):
     
     sorted_x = sorted(AllDic.items(), key=operator.itemgetter(1))
     for anitem in sorted_x:
-        print anitem
+        print (anitem)
         
 def IsPotential(data):
     # find those price increases more than decreases
@@ -234,7 +234,7 @@ def IsPotential(data):
 if __name__=='__main__':
     todaystring = time.strftime('%Y-%m-%d')
     #todaystring = '2017-01-17'
-    print todaystring
+    print( todaystring)
     print ('Get Up Trend Stocks')
     GetUpTrendStocks(todaystring)
     print('\n=======================================================\nGet Breakout Stocks')

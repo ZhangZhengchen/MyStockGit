@@ -673,7 +673,7 @@ if __name__=='__main__':
         StartDate = '2016-01-04'
         #StartDate = '2015-01-06'
         #EndDate = '2016-01-25'
-        EndDate = '2017-06-29'
+        EndDate = '2016-06-29'
         AllRes = {}
         AllVar = {}
         for i in [10,20,30,60,90,100,120,150,200]:
@@ -682,14 +682,13 @@ if __name__=='__main__':
                 astrategy = VolumeChangeExistLow(5000,StartDate,EndDate,i,j,BigLists,1)
                 #astrategy = SellAllTimeLow(5000,StartDate,EndDate,i,j,BigLists,3)
                 [Percent,Win,Lose,AverageProfit,Expection] = astrategy.RunAStrategy()
-                print 'i==='+str(i)+'\tj===='+str(j)
+                print ('i==='+str(i)+'\tj===='+str(j))
                 AllRes[str(i)+','+str(j)] = [Percent,AverageProfit,Expection]
                 temp.append(Percent)
-                print '=====================================\n\n\n'
+                print ('=====================================\n\n\n')
             AllVar[i] = [numpy.mean(temp),numpy.std(temp)]
         AllRes = collections.OrderedDict(sorted(AllRes.items()))
         for anitem in AllRes:
-            print anitem+'\t'+str(AllRes[anitem])
+            print (anitem+'\t'+str(AllRes[anitem]))
         
-        print AllVar
-    
+        print (AllVar)

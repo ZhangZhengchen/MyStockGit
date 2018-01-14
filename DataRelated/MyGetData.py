@@ -4,10 +4,9 @@
 '''
 import pandas as pd
 import numpy as np
-import urllib2
+import urllib.request, urllib.parse, urllib.error
 import datetime as dt
 import matplotlib.pyplot as plt
-from pandas.tools.plotting import df_ax
 import sys
 
 class GetData(object):
@@ -25,24 +24,24 @@ class GetData(object):
         return [time open high low close volume]
         '''
         if market!='SGX' and market!='NASD' and market!='NASD_index':
-            print 'market value error! '+market
+            print('market value error! '+market)
             return [[],[],[],[],[],[]]
         if market=='NASD_index':
             market = 'NASD'
-        url_root = 'http://www.google.com/finance/getprices?i='
+        url_root = 'http://finance.google.com/finance/getprices?i='
         url_root += str(period) + '&p=' + str(window)
         url_root += 'd&f=d,o,h,l,c,v&df=cpct&q=' + symbol
         url_root += '&x='+market
         if symbol=='IXIC':
             url_root = url_root[0:-7]
-        print url_root
+        print(url_root)
         try:
-            response = urllib2.urlopen(url_root)
-            data = response.read().split('\n')
+            response = urllib.request.urlopen(url_root)
+            data = response.read().decode('utf-8').split('\n')
         except:
-            print sys.exc_info()[0]
+            print(sys.exc_info()[0])
             return []
-        #print data
+        #print(data
         #actual data starts at index = 7
         #first line contains full timestamp,
         #every other line is offset of period from timestamp
@@ -61,13 +60,13 @@ class GetData(object):
                 anchor_stamp = cdata[0].replace('a', '')
                 cts = int(anchor_stamp) + timezoneoffset
                 parsed_data.append((dt.datetime.fromtimestamp(float(cts)), float(cdata[1]), float(cdata[2]), float(cdata[3]), float(cdata[4]), float(cdata[5])))
-                #print parsed_data[-1]
+                #print(parsed_data[-1]
             else:
                 try:
                     coffset = int(cdata[0])
                     cts = int(anchor_stamp) + (coffset * period) + timezoneoffset
                     parsed_data.append((dt.datetime.fromtimestamp(float(cts)), float(cdata[1]), float(cdata[2]), float(cdata[3]), float(cdata[4]), float(cdata[5])))
-                    #print parsed_data[-1]
+                    #print(parsed_data[-1]
                 except:
                     pass # for time zone offsets thrown into data
         '''df = pd.DataFrame(parsed_data)
@@ -94,18 +93,19 @@ class GetData(object):
         return [time close high low open volume]
         '''
         period = 86400
-        url_root = 'http://www.google.com/finance/getprices?i='
+        url_root = 'http://finance.google.com/finance/getprices?i='
         url_root += str(period)+ '&p=' + str(window)
         url_root += 'd&f=d,c,h,l,o,v&df=cpct&q=' + symbol
         url_root += '&x='+market
-        #print url_root
+        #print(url_root
         try:
-            response = urllib2.urlopen(url_root)
-            data = response.read().split('\n')
+            response = urllib.request.urlopen(url_root)
+            temp = response.read().decode('utf-8')
+            data = temp.split('\n')
         except:
-            print sys.exc_info()[0]
+            print(sys.exc_info()[0])
             return [[],[],[],[],[],[]]
-        #print data
+        #print(data
         #actual data starts at index = 7
         #first line contains full timestamp,
         #every other line is offset of period from timestamp
@@ -126,7 +126,7 @@ class GetData(object):
         for i in range(7, end):
             cdata = data[i].split(',')
             if len(cdata)<6:
-                #print cdata
+                #print(cdata
                 continue
             if 'a' in cdata[0]:
                 #first one record anchor timestamp
@@ -136,7 +136,7 @@ class GetData(object):
                 try:
                     coffset = int(cdata[0])
                     cts = int(anchor_stamp) + (coffset * period) + timezoneoffset
-                    #print parsed_data[-1]
+                    #print(parsed_data[-1]
                 except:
                     continue # for time zone offsets thrown into data
             adate = dt.datetime.fromtimestamp(float(cts)).strftime('%Y-%m-%d')
@@ -146,7 +146,7 @@ class GetData(object):
             low.insert(0,cdata[3])
             openprice.insert(0,cdata[4])
             volume.insert(0,cdata[5])   
-            #print parsed_data[-1]
+            #print(parsed_data[-1]
             
        
         return [thedates,close,high,low,openprice,volume]
@@ -156,15 +156,15 @@ class GetData(object):
         return daily price data
         '''
         try:
-            print 'Currently Pulling',stockid
+            print('Currently Pulling',stockid)
             urlToVisit = 'http://chartapi.finance.yahoo.com/instrument/1.1/'+stockid+'/chartdata;type=quote;range='+str(monthrange)+'m/csv'
             stockFile =[]
             try:
-                sourceCode = urllib2.urlopen(urlToVisit).read()
+                sourceCode = urllib.request.urlopen(urlToVisit).read().decode('utf-8')
                 splitSource = sourceCode.split('\n')
                 for eachLine in splitSource:
                     if eachLine.find("errorid")>=0:
-                        print eachLine
+                        print(eachLine)
                         return [[],[],[],[],[],[]]
                     splitLine = eachLine.split(',')
                     if len(splitLine)==6:
@@ -178,11 +178,11 @@ class GetData(object):
                     thedate = dt.datetime.strptime(str(int(date[k])),'%Y%m%d').strftime('%Y-%m-%d')
                     strdate.append(thedate)
                 return [strdate, closep, highp, lowp, openp, volume]
-            except Exception, e:
-                print str(e), 'failed to organize pulled data.'
+            except Exception as e:
+                print(str(e), 'failed to organize pulled data.')
                 return [[],[],[],[],[],[]]
-        except Exception,e:
-            print str(e), 'failed to pull pricing data'
+        except Exception as e:
+            print(str(e), 'failed to pull pricing data')
             return [[],[],[],[],[],[]]
         
     def GetTodayData(self,stockid):
@@ -191,15 +191,15 @@ class GetData(object):
         ['2015-12-17', 108.98, 112.25, 108.98, 112.02, 44554400.0]
         '''
         try:
-            print 'Currently Pulling',stockid
+            print('Currently Pulling',stockid)
             urlToVisit = 'http://chartapi.finance.yahoo.com/instrument/1.1/'+stockid+'/chartdata;type=quote;range=1m/csv'
             stockFile =[]
             try:
-                sourceCode = urllib2.urlopen(urlToVisit).read()
+                sourceCode = urllib.request.urlopen(urlToVisit).read().decode('utf-8')
                 splitSource = sourceCode.split('\n')
                 for eachLine in splitSource:
                     if eachLine.find("errorid")>=0:
-                        print eachLine
+                        print(eachLine)
                         return [[],[],[],[],[],[]]
                     splitLine = eachLine.split(',')
                     if len(splitLine)==6:
@@ -213,15 +213,15 @@ class GetData(object):
                 thedate = dt.datetime.strptime(str(int(date[k])),'%Y%m%d').strftime('%Y-%m-%d')
                 strdate.append(thedate)
                 return [strdate[-1], closep[-1], highp[-1], lowp[-1], openp[-1], volume[-1]]
-            except Exception, e:
-                print str(e), 'failed to organize pulled data.'
+            except Exception as e:
+                print(str(e), 'failed to organize pulled data.')
                 return [[],[],[],[],[],[]]
-        except Exception,e:
-            print str(e), 'failed to pull pricing data'
+        except Exception as e:
+            print(str(e), 'failed to pull pricing data')
             return [[],[],[],[],[],[]]
         
         
 if __name__=='__main__':
     gd = GetData()
     df = gd.GetDataInADay('AAPL',window=100)
-    print df
+    print(df)
