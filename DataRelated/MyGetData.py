@@ -115,6 +115,7 @@ class GetData(object):
             timezoneoffset = 0
         else:
             timezoneoffset = -12*60*60
+            #timezoneoffset = -300
         
         thedates = []
         close=[]
@@ -124,28 +125,34 @@ class GetData(object):
         volume = []
         
         for i in range(7, end):
-            cdata = data[i].split(',')
-            if len(cdata)<6:
-                #print(cdata
+            if data[i].lower().find('timezone_offset=')==0:
+                #temp = data[i].lower().replace('timezone_offset=','')
+                #timezoneoffset = int(temp)*3600
+                #timezoneoffset = -12*60*60
                 continue
-            if 'a' in cdata[0]:
-                #first one record anchor timestamp
-                anchor_stamp = cdata[0].replace('a', '')
-                cts = int(anchor_stamp) + timezoneoffset
             else:
-                try:
-                    coffset = int(cdata[0])
-                    cts = int(anchor_stamp) + (coffset * period) + timezoneoffset
-                    #print(parsed_data[-1]
-                except:
-                    continue # for time zone offsets thrown into data
-            adate = dt.datetime.fromtimestamp(float(cts)).strftime('%Y-%m-%d')
-            thedates.insert(0,adate)
-            close.insert(0,cdata[1])
-            high.insert(0,cdata[2])
-            low.insert(0,cdata[3])
-            openprice.insert(0,cdata[4])
-            volume.insert(0,cdata[5])   
+                cdata = data[i].split(',')
+                if len(cdata)<6:
+                    #print(cdata
+                    continue
+                if 'a' in cdata[0]:
+                    #first one record anchor timestamp
+                    anchor_stamp = cdata[0].replace('a', '')
+                    cts = int(anchor_stamp) + timezoneoffset
+                else:
+                    try:
+                        coffset = int(cdata[0])
+                        cts = int(anchor_stamp) + (coffset * period) + timezoneoffset
+                        #print(parsed_data[-1]
+                    except:
+                        continue # for time zone offsets thrown into data
+                adate = dt.datetime.fromtimestamp(float(cts)).strftime('%Y-%m-%d')
+                thedates.insert(0,adate)
+                close.insert(0,cdata[1])
+                high.insert(0,cdata[2])
+                low.insert(0,cdata[3])
+                openprice.insert(0,cdata[4])
+                volume.insert(0,cdata[5])   
             #print(parsed_data[-1]
             
        

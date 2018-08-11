@@ -9,27 +9,35 @@ import matplotlib.ticker as mticker
 import matplotlib.dates as mdates
 import pylab
 import numpy as np
+import sys
 
 class PlotClass(object):
     def drawData(self, date, openp, closep, highp, lowp, volume,SaveImage=False,SaveName=''):
         try:
             plt.close()
-            fig = plt.figure(facecolor='#ffffff',figsize=(5,5))
+            fig = plt.figure(facecolor='#ffffff',figsize=(6,4))
             x = 0
             y = len(date)
             newAr = []
             while x < y:
-                appendLine = date[x],openp[x],closep[x],highp[x],lowp[x],volume[x]
+                appendLine = date[x],openp[x],highp[x],lowp[x],closep[x],volume[x]
                 newAr.append(appendLine)
                 x+=1
                 
             #SP = len(date[MA2-1:])
             SP = 0
-            ax1 = plt.subplot2grid((8,4), (1,0), rowspan=4, colspan=4, axisbg='#ffffff')
-            plotf.candlestick(ax1, newAr[-SP:], width=.6, colorup='#53c156', colordown='#ff1717')
+            ax1 = plt.subplot2grid((1,1), (0,0), rowspan=1, colspan=1, axisbg='#ffffff')
+            #fig, ax1 = plt.subplots()
+            #plotf.candlestick2_ochl(ax1, openp[-SP:],closep[-SP:],highp[-SP:],lowp[-SP:],width=.6)
+            plotf.candlestick_ohlc(ax1,newAr,width=.6)
+            #plotf.candlestick(ax1, newAr[-SP:], width=.6, colorup='#53c156', colordown='#ff1717')
             #candlestick(ax1, openp[-SP:],closep[-SP:],highp[-SP:],lowp[-SP:], width=.6)
+            ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+            ax1.xaxis_date()
+            ax1.autoscale_view()
+            plt.setp(plt.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
             
-            ax1.grid(False)
+            '''ax1.grid(False)
             ax1.xaxis.set_major_locator(mticker.MaxNLocator(10))
             ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
             ax1.yaxis.label.set_color("b")
@@ -67,13 +75,7 @@ class PlotClass(object):
             ax1v.tick_params(axis='y', colors='b')
             #plt.ylabel('Volume', color='b')
             
-            plt.setp(ax1.get_xticklabels(), visible=False)
-            
-            '''ax1.annotate('Big news!',(date[510],Av1[510]),
-                xytext=(0.8, 0.9), textcoords='axes fraction',
-                arrowprops=dict(facecolor='white', shrink=0.05),
-                fontsize=14, color = 'w',
-                horizontalalignment='right', verticalalignment='bottom')'''
+            plt.setp(ax1.get_xticklabels(), visible=False)'''
     
             #plt.subplots_adjust(left=.09, bottom=.14, right=.94, top=.95, wspace=.20, hspace=0)
             if not SaveImage:
@@ -82,5 +84,5 @@ class PlotClass(object):
                 plt.savefig(SaveName)
             #self.fig.savefig('example.png',facecolor=self.fig.get_facecolor())
                
-        except Exception,e:
-            print 'main loop',str(e)
+        except:
+            print("Unexpected error:", sys.exc_info()[0])

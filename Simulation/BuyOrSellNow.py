@@ -16,7 +16,7 @@ from StrategyExitVariation import BuyATHExitBigVibration
 def GetBuyListToday(EndDate,BigLists):
     PreDate = datetime.datetime.strptime(EndDate,'%Y-%m-%d')
     PreDate -= datetime.timedelta(days=1)
-    for i in [30,60,100,120]:
+    for i in [10,30,60,100,120]:
         j = 10
         print('i==='+str(i))
         #astrategy = VolumeChangeExistLow(5000,'2017-01-04',PreDate.strftime('%Y-%m-%d'),i,j,BigLists,3)
@@ -122,7 +122,7 @@ if __name__=='__main__':
     
     Step=''
     BigLists = PrepareData.GetBigCompany("../data/BigCompany.txt")
-    EndDateStr = '2018-01-12'
+    EndDateStr = '2018-06-06'
     Step='Buy'
     if Step=='Buy':
         #EndDate = datetime.date.today()
@@ -161,9 +161,9 @@ if __name__=='__main__':
         CurrentList['KMX'] = [Holding(66.83,40,'2017-07-27',363.32/ratio,63.5)]
         CurrentList['V'] = [Holding(99.43,30,'2017-07-28',362.08/ratio,95.7)]
         CurrentList['PYPL'] = [Holding(60.35,45,'2017-07-28',362.08/ratio,57)]'''
-        CurrentList['INTC'] = [Holding(45.58,35,'2017-12-19',217.98/ratio,42.5)]
-        CurrentList['F'] = [Holding(12.74,150,'2017-12-19',257.43/ratio,12.35)]
-        CurrentList['ABBV'] = [Holding(99.12,15,'2017-12-19',198.51/ratio,94)]
+        CurrentList['V'] = [Holding(117.96,20,'2018-02-13',324.34/ratio,118.55)]
+        CurrentList['VFC'] = [Holding(75.83,40,'2018-02-20',399.73/ratio,72.5)]
+        #CurrentList['ABBV'] = [Holding(99.12,15,'2017-12-19',198.51/ratio,94)]
         ShallSellToday(EndDateStr, BigLists,CurrentList)
         #EndDateStr = '2017-07-31'
         ShallSellTodayVibration(EndDateStr,BigLists,CurrentList)

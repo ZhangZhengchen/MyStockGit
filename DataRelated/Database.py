@@ -3,13 +3,16 @@ Created on 2017 3 25
 
 @author: Yali
 '''
-import MySQLdb as mdb
 import sys
-sys.path.append('./')
+sys.path.append('../')
+sys.path.append('../data')
+sys.path.append("../DataRelated")
+
+import MySQLdb as mdb
 import time
-import Condition
+import DataRelated.Condition as Condition
 import numpy as np
-import MyGetData
+import DataRelated.MyGetData as MyGetData
 import datetime
 import copy
 import sklearn.preprocessing as prep
